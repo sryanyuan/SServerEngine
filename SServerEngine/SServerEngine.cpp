@@ -15,7 +15,7 @@ SServerEngine::~SServerEngine()
 //
 int SServerEngine::Start()
 {
-
+	return kSServerResult_Ok;
 }
 
 //////////////////////////////////////////////////////////////////////////
