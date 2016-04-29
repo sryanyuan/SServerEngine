@@ -60,6 +60,8 @@ int SServerEngine::Start()
 
 void SServerEngine::onConnectionClosed(SServerConn* pConn)
 {
+	LOGPRINT("Con %d closed", pConn->uConnIndex);
+
 	//	free index
 	m_xIndexMgr.Push(pConn->uConnIndex);
 	SetConn(pConn->uConnIndex, NULL);
@@ -164,8 +166,6 @@ void SServerEngine::__onAcceptConn(struct evconnlistener *pEvListener, evutil_so
 	bufferevent_setwatermark(pEv, EV_WRITE, 0, 0);
 	bufferevent_enable(pEv, EV_READ);
 	pIns->SetConn(uConnIndex, pConn);
-
-	evutil_closesocket(sock);
 }
 
 void SServerEngine::__onAcceptErr(struct evconnlistener *pEvListener, void *ptr)
@@ -183,6 +183,11 @@ void SServerEngine::__onConnRead(struct bufferevent* pEv, void* pCtx)
 	{
 		//	connection closed
 		LOGPRINT("Conn %d closed", pConn->uConnIndex);
+	}
+
+	if(1 == pConn->uConnIndex)
+	{
+		pConn->pEng->onConnectionClosed(pConn);
 	}
 }
 
