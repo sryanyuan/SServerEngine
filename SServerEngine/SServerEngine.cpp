@@ -6,6 +6,7 @@ SServerEngine::SServerEngine()
 	m_pConnListener = NULL;
 	m_uPort = 0;
 	memset(&m_stThreadId, 0, sizeof(m_stThreadId));
+	memset(m_arraySocketPair, 0, sizeof(m_arraySocketPair));
 	m_uMaxConn = DEF_DEFAULT_MAX_CONN;
 	m_pConnArray = NULL;
 }

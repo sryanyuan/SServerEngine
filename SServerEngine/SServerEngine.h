@@ -134,6 +134,8 @@ private:
 
 	IndexManager m_xIndexMgr;
 	SServerConn** m_pConnArray;
+
+	evutil_socket_t m_arraySocketPair[2];
 };
 //////////////////////////////////////////////////////////////////////////
 #endif
