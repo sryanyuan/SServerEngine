@@ -4,13 +4,22 @@
 #include <stdio.h>
 #include <stdarg.h>
 //////////////////////////////////////////////////////////////////////////
+#define LOGLEVEL_DEBUG	0
+#define LOGLEVEL_INFO	1
+#define LOGLEVEL_ERROR	2
 
-inline void logPrint(const char* _pszFunction, int _nLine, const char* _pszFormat, ...)
+inline void logPrint(int _nLevel, const char* _pszFunction, int _nLine, const char* _pszFormat, ...)
 {
+	static const char* s_szLogLevelStr[] = {
+		"[DEBUG]",
+		"[INFO ]",
+		"[ERROR]"
+	};
+
 	char szLogBuffer[512];
 	szLogBuffer[0] = 0;
 	szLogBuffer[sizeof(szLogBuffer) / sizeof(szLogBuffer[0]) - 1] = 0;
-	int nWrite = _snprintf(szLogBuffer, sizeof(szLogBuffer) / sizeof(szLogBuffer[0]) - 1, "%s:%d ", _pszFunction, _nLine);
+	int nWrite = _snprintf(szLogBuffer, sizeof(szLogBuffer) / sizeof(szLogBuffer[0]) - 1, "%s %s:%d ", s_szLogLevelStr[_nLevel], _pszFunction, _nLine);
 	if(nWrite < 0)
 	{
 		//	this log is truncated
@@ -38,6 +47,9 @@ inline void logPrint(const char* _pszFunction, int _nLine, const char* _pszForma
 	printf(szLogBuffer);
 }
 
-#define LOGPRINT(FORMAT, ...)	logPrint(__FUNCTION__, __LINE__, FORMAT, __VA_ARGS__)
+#define LOGDEBUG(FORMAT, ...)	logPrint(LOGLEVEL_DEBUG, __FUNCTION__, __LINE__, FORMAT, __VA_ARGS__)
+#define LOGPRINT(FORMAT, ...)	logPrint(LOGLEVEL_INFO, __FUNCTION__, __LINE__, FORMAT, __VA_ARGS__)
+#define LOGINFO(FORMAT, ...)	logPrint(LOGLEVEL_INFO, __FUNCTION__, __LINE__, FORMAT, __VA_ARGS__)
+#define LOGERROR(FORMAT, ...)	logPrint(LOGLEVEL_ERROR, __FUNCTION__, __LINE__, FORMAT, __VA_ARGS__)
 //////////////////////////////////////////////////////////////////////////
 #endif
