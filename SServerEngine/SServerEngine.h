@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include "IndexManager.h"
 #include "Logger.h"
+#include "SServerConn.h"
+#include "Def.h"
 //////////////////////////////////////////////////////////////////////////
 #ifdef WIN32
 
@@ -43,8 +45,9 @@
 
 #endif
 //////////////////////////////////////////////////////////////////////////
-#define DEF_DEFAULT_MAX_CONN		100
-#define DEF_NETPROTOCOL_HEADER_LENGTH	4
+typedef void (*FUNC_ONCONNECTED)(unsigned int);
+typedef void (*FUNC_ONDISCONNECTED)(unsigned int);
+typedef void (*FUNC_ONRECV)(unsigned int, char*, unsigned int);
 //////////////////////////////////////////////////////////////////////////
 enum SServerResultType
 {
@@ -54,7 +57,6 @@ enum SServerResultType
 	kSServerResult_ListenFailed,
 };
 //////////////////////////////////////////////////////////////////////////
-class SServerEngine;
 struct SServerEvent
 {
 	int nEventId;
@@ -62,12 +64,17 @@ struct SServerEvent
 	size_t uLength;
 };
 
-struct SServerConn
+enum SServerActionType
 {
-	SServerEngine* pEng;
-	bufferevent* pEv;
-	unsigned int uConnIndex;
-	evutil_socket_t fd;
+	kSServerAction_Close,
+	kSServerAction_Send,
+};
+
+struct SServerAction
+{
+	unsigned short uAction;
+	unsigned short uIndex;
+	unsigned short uTag;
 };
 
 struct SServerInitDesc
@@ -75,6 +82,25 @@ struct SServerInitDesc
 	std::string xAddr;
 	unsigned short uPort; 
 	size_t uMaxConn;
+
+	//	callbacks
+	FUNC_ONCONNECTED pFuncOnConnected;
+	FUNC_ONDISCONNECTED pFuncOnDisconncted;
+	FUNC_ONRECV pFuncOnRecv;
+};
+
+struct SServerAutoLocker
+{
+	SServerAutoLocker(pthread_mutex_t* _pm)
+	{
+		pMtx = _pm;
+		pthread_mutex_lock(pMtx);
+	}
+	~SServerAutoLocker()
+	{
+		pthread_mutex_unlock(pMtx);
+	}
+	pthread_mutex_t* pMtx;
 };
 //////////////////////////////////////////////////////////////////////////
 class SServerEngine
@@ -87,6 +113,7 @@ public:
 	int Init(const SServerInitDesc* _pDesc);
 	int Start();
 
+	//	thread-safe
 	int SendPacket(unsigned int _uConnIndex, char* _pData, size_t _uLength);
 	int CloseConnection(unsigned int _uConnIndex);
 
@@ -96,23 +123,42 @@ public:
 
 	inline SServerConn* GetConn(unsigned int _uConnIndex)
 	{
-		if(_uConnIndex >= m_uMaxConn)
+		if(_uConnIndex > m_uMaxConn ||
+			0 == _uConnIndex)
 		{
+			LOGERROR("Invalid conn index %d", _uConnIndex);
 			return NULL;
 		}
 		return m_pConnArray[_uConnIndex];
 	}
 	inline void SetConn(unsigned int _uConnIndex, SServerConn* conn)
 	{
-		if(_uConnIndex >= m_uMaxConn)
+		if(_uConnIndex > m_uMaxConn ||
+			0 == _uConnIndex)
 		{
+			LOGERROR("Invalid conn index %d", _uConnIndex);
 			return;
 		}
 		m_pConnArray[_uConnIndex] = conn;
 	}
 
+	inline void LockSendBuffer()
+	{
+		pthread_mutex_lock(&m_xSendMutex);
+	}
+	inline void UnlockSendBuffer()
+	{
+		pthread_mutex_unlock(&m_xSendMutex);
+	}
+
+	void Callback_OnConnected(unsigned int _uIndex);
+	void Callback_OnDisconnected(unsigned int _uIndex);
+	void Callback_OnRecv(unsigned int _uIndex, char* _pData, unsigned int _uLength);
+
 protected:
 	void onConnectionClosed(SServerConn* pConn);
+	void processConnEvent();
+	void awake();
 
 public:
 	static void* PTW32_CDECL __threadEntry(void*);
@@ -122,6 +168,8 @@ public:
 
 	static void __onConnRead(struct bufferevent* pEv, void* pCtx);
 	static void __onConnEvent(struct bufferevent* pEv, short what, void* pCtx);
+
+	static void __onThreadRead(struct bufferevent* pEv, void* pCtx);
 
 private:
 	pthread_t m_stThreadId;
@@ -136,6 +184,15 @@ private:
 	SServerConn** m_pConnArray;
 
 	evutil_socket_t m_arraySocketPair[2];
+	bufferevent* m_pBvEvent;
+
+	pthread_mutex_t m_xSendMutex;
+	SServerBuffer m_xSendBuffer;
+
+	//	callbacks
+	FUNC_ONCONNECTED m_pFuncOnConnected;
+	FUNC_ONDISCONNECTED m_pFuncOnDisconnected;
+	FUNC_ONRECV m_pFuncOnRecv;
 };
 //////////////////////////////////////////////////////////////////////////
 #endif

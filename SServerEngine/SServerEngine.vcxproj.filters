@@ -27,10 +27,22 @@
     <ClInclude Include="SServerEngine.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Logger.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="create_index.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="IndexManager.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Logger.h">
+    <ClInclude Include="SServerConn.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SServerBuffer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Def.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -44,7 +56,13 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="create_index.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="IndexManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="SServerConn.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

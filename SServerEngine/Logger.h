@@ -37,7 +37,7 @@ inline void logPrint(int _nLevel, const char* _pszFunction, int _nLine, const ch
 	va_end(args);
 
 	if(nRet <= 0 ||
-		nRet >= sizeof(szLogBuffer) / sizeof(szLogBuffer[0]) - uPtr - 1)
+		nRet >= int(sizeof(szLogBuffer) / sizeof(szLogBuffer[0]) - uPtr - 1))
 	{
 		return;
 	}

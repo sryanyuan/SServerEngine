@@ -3,6 +3,7 @@
 //////////////////////////////////////////////////////////////////////////
 #include <vector>
 #include "Logger.h"
+#include "create_index.h"
 //////////////////////////////////////////////////////////////////////////
 typedef std::vector<unsigned int> IndexContainer;
 //////////////////////////////////////////////////////////////////////////
@@ -15,16 +16,13 @@ public:
 public:
 	void Init(size_t _uSize);
 	unsigned int Pop();
-	int Push(unsigned int _uIndex);
+	void Push(unsigned int _uIndex);
 
 public:
 	static unsigned int s_uInvalidIndex;
 
 private:
-	IndexContainer m_xContainer;
-	IndexContainer m_xFreeIndexes;
-	unsigned int m_uHead;
-	unsigned int m_uFreePtr;
+	CIndexCreator m_xIndexCreator;
 };
 //////////////////////////////////////////////////////////////////////////
 #endif
