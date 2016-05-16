@@ -1,6 +1,37 @@
 #include "SServerEngine.h"
 #include <event2\thread.h>
 //////////////////////////////////////////////////////////////////////////
+#ifdef WIN32
+
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "lib/pthread/pthreadVC2.lib")
+
+#if _MSC_VER == 1700
+#ifdef _DEBUG
+#pragma comment(lib, "lib/libevent/libevent_vc11_d.lib")
+#pragma comment(lib, "lib/libevent/libevent_core_vc11_d.lib")
+#pragma comment(lib, "lib/libevent/libevent_extras_vc11_d.lib")
+#else
+#pragma comment(lib, "lib/libevent/libevent_vc11.lib")
+#pragma comment(lib, "lib/libevent/libevent_core_vc11.lib")
+#pragma comment(lib, "lib/libevent/libevent_extras_vc11.lib")
+#endif
+#elif _MSC_VER == 1500
+#ifdef _DEBUG
+#pragma comment(lib, "lib/libevent/libevent_vc9_d.lib")
+#pragma comment(lib, "lib/libevent/libevent_core_vc9_d.lib")
+#pragma comment(lib, "lib/libevent/libevent_extras_vc9_d.lib")
+#else
+#pragma comment(lib, "lib/libevent/libevent_vc9.lib")
+#pragma comment(lib, "lib/libevent/libevent_core_vc9.lib")
+#pragma comment(lib, "lib/libevent/libevent_extras_vc9.lib")
+#endif
+#else
+#error VS version not support
+#endif
+
+#endif
+//////////////////////////////////////////////////////////////////////////
 SServerEngine::SServerEngine()
 {
 	m_pBvEvent = NULL;
