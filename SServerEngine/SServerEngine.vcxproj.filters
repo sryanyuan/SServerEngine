@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="NetbaseWrapper">
+      <UniqueIdentifier>{01dacfd9-73ae-494c-89cd-4a1b3994373c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -45,6 +48,9 @@
     <ClInclude Include="Def.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="NetbaseWrapper.h">
+      <Filter>NetbaseWrapper</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -64,6 +70,9 @@
     </ClCompile>
     <ClCompile Include="SServerConn.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="NetbaseWrapper.cpp">
+      <Filter>NetbaseWrapper</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

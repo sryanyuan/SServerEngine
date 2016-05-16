@@ -10,6 +10,13 @@ SServerConn::SServerConn()
 	fd = 0;
 	m_uPacketHeadLength = 0;
 	m_xReadBuffer.AllocBuffer(5 * 1024);
+	memset(&m_stAddress, 0, sizeof(sockaddr_in));
+	bServerConn = false;
+	eConnState = kSServerConnState_None;
+
+	m_fnOnConnectSuccess = NULL;
+	m_fnOnConnectFailed = NULL;
+	m_pConnectResultArg = NULL;
 }
 
 SServerConn::~SServerConn()
@@ -26,7 +33,7 @@ void SServerConn::readHead()
 	if(uLen < DEF_NETPROTOCOL_HEADER_LENGTH)
 	{
 		LOGERROR("Head length invalid %d", uLen);
-		pEng->CloseConnection(uConnIndex);
+		pEng->CloseUserConnection(uConnIndex);
 		return;
 	}
 
@@ -39,7 +46,7 @@ void SServerConn::readHead()
 	if(m_uPacketHeadLength <= DEF_NETPROTOCOL_HEADER_LENGTH)
 	{
 		LOGERROR("Head length content invalid %d", m_uPacketHeadLength);
-		pEng->CloseConnection(uConnIndex);
+		pEng->CloseUserConnection(uConnIndex);
 		return;
 	}
 
@@ -61,7 +68,7 @@ void SServerConn::readBody()
 	if(m_uPacketHeadLength <= DEF_NETPROTOCOL_HEADER_LENGTH)
 	{
 		LOGERROR("Invalid body length %d", m_uPacketHeadLength);
-		pEng->CloseConnection(uConnIndex);
+		pEng->CloseUserConnection(uConnIndex);
 		return;
 	}
 
@@ -73,7 +80,7 @@ void SServerConn::readBody()
 	if(uLen < uBodyLength)
 	{
 		LOGERROR("Invalid read body length %d", uLen);
-		pEng->CloseConnection(uConnIndex);
+		pEng->CloseUserConnection(uConnIndex);
 		return;
 	}
 
@@ -88,7 +95,14 @@ void SServerConn::readBody()
 	m_xReadBuffer.Rewind();
 
 	//	callback
-	pEng->Callback_OnRecv(uConnIndex, m_xReadBuffer.GetReadableBufferPtr(), uBodyLength);
+	if(bServerConn)
+	{
+		pEng->Callback_OnRecvServer(uConnIndex, m_xReadBuffer.GetReadableBufferPtr(), uBodyLength);
+	}
+	else
+	{
+		pEng->Callback_OnRecvUser(uConnIndex, m_xReadBuffer.GetReadableBufferPtr(), uBodyLength);
+	}
 	m_xReadBuffer.Reset();
 
 	//	continue read head
@@ -105,4 +119,48 @@ void SServerConn::readBody()
 		//	wait read head
 		bufferevent_setwatermark(pEv, EV_READ, DEF_NETPROTOCOL_HEADER_LENGTH, 0);
 	}
+}
+
+void SServerConn::SetAddress(const sockaddr_in* _pAddr)
+{
+	memcpy(&m_stAddress, _pAddr, sizeof(sockaddr_in));
+}
+
+sockaddr_in* SServerConn::GetAddress()
+{
+	return &m_stAddress;
+}
+
+bool SServerConn::GetAddress(char* _pBuffer, unsigned short* _pPort)
+{
+	*_pPort = 0;
+	memset(_pBuffer, 0, 15);
+
+	char* paddr = inet_ntoa(m_stAddress.sin_addr);
+	if(NULL == paddr)
+	{
+		return false;
+	}
+
+	memcpy(_pBuffer, paddr, lstrlen(paddr) + 1);
+	*_pPort = ntohs(m_stAddress.sin_port);
+	return true;
+}
+
+void SServerConn::Callback_OnConnectSuccess()
+{
+	if(NULL == m_fnOnConnectSuccess)
+	{
+		return;
+	}
+	m_fnOnConnectSuccess(uConnIndex, m_pConnectResultArg);
+}
+
+void SServerConn::Callback_OnConnectFailed()
+{
+	if(NULL == m_fnOnConnectFailed)
+	{
+		return;
+	}
+	m_fnOnConnectFailed(uConnIndex, m_pConnectResultArg);
 }

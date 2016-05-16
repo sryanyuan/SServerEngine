@@ -3,8 +3,10 @@
 
 #include "stdafx.h"
 #include "SServerEngine.h"
+#include "NetbaseWrapper.h"
 
 SServerEngine eng;
+NetbaseWrapper svr;
 
 void printThreadId()
 {
@@ -12,32 +14,95 @@ void printThreadId()
 	printf("Thread id %d \n", dwTid);
 }
 
-void onConnected(unsigned int _index)
+void __stdcall onAcceptUser(unsigned int _index)
 {
-	printThreadId();
-	LOGINFO("%d connected", _index);
+	LOGINFO("user %d connected", _index);
 }
 
-void onDisconnected(unsigned int _index)
+void __stdcall onAcceptServer(unsigned int _index)
 {
-	printThreadId();
-	LOGINFO("%d disconnected", _index);
+	LOGINFO("server %d connected", _index);
 }
 
-void onRecv(unsigned int _index, char* _data, unsigned int _len)
+void __stdcall onDisconnectedUser(unsigned int _index)
+{
+	LOGINFO("user %d disconnected", _index);
+}
+
+void __stdcall onDisconnectedServer(unsigned int _index)
+{
+	LOGINFO("server%d disconnected", _index);
+}
+
+void __stdcall onConnectSuccess(unsigned int _index, void* _arg)
+{
+	LOGINFO("connect success %d", _index);
+}
+
+void __stdcall onConnectFailed(unsigned int _index, void* _arg)
+{
+	LOGINFO("connect failed %d", _index);
+}
+
+void __stdcall onRecvUser(unsigned int _index, char* _data, unsigned int _len)
 {
 	static char tx[1024];
 	strncpy(tx, _data, _len);
 	printThreadId();
-	LOGINFO("%d recv %s length %d", _index, tx, _len);
+	LOGINFO("%d recv user %s length %d", _index, tx, _len);
 
-	if('Q' == _data[0])
+	/*if('Q' == _data[0])
 	{
-		eng.CloseConnection(_index);
+		eng.CloseUserConnection(_index);
 	}
 	else if('T' == _data[0])
 	{
-		eng.SendPacket(_index, tx, _len);
+		eng.SendPacketToUser(_index, tx, _len);
+	}
+	else if('C' == _data[0])
+	{
+		eng.Connect("127.0.0.1", 2222, onConnectSuccess, onConnectFailed, NULL);
+	}
+	else if('D' == _data[0])
+	{
+		eng.Connect("127.0.0.1", 2223, onConnectSuccess, onConnectFailed, NULL);
+	}*/
+	if('Q' == _data[0])
+	{
+		svr.CompulsiveDisconnectUser(_index);
+	}
+	else if('T' == _data[0])
+	{
+		svr.SendToServer(_index, tx, _len, 0);
+	}
+	else if('C' == _data[0])
+	{
+		svr.ConnectToServerWithServerSide("127.0.0.1", 2222, CONNECTSUCCESSFUNC(onConnectSuccess), CONNECTFAILFUNC(onConnectFailed), NULL);
+	}
+	else if('D' == _data[0])
+	{
+		svr.ConnectToServerWithServerSide("127.0.0.1", 2223, CONNECTSUCCESSFUNC(onConnectSuccess), CONNECTFAILFUNC(onConnectFailed), NULL);
+	}
+}
+
+void __stdcall onRecvServer(unsigned int _index, char* _data, unsigned int _len)
+{
+	static char tx[1024];
+	strncpy(tx, _data, _len);
+	printThreadId();
+	LOGINFO("%d recv server %s length %d", _index, tx, _len);
+
+	if('Q' == _data[0])
+	{
+		eng.CloseUserConnection(_index);
+	}
+	else if('T' == _data[0])
+	{
+		eng.SendPacketToUser(_index, tx, _len);
+	}
+	else if('C' == _data[0])
+	{
+		eng.Connect("127.0.0.1", 2222, onConnectSuccess, onConnectFailed, NULL);
 	}
 }
 
@@ -49,22 +114,32 @@ int _tmain(int argc, _TCHAR* argv[])
 #endif
 	printThreadId();
 
-	SServerInitDesc desc;
-	desc.uMaxConn = 5;
-	desc.uPort = 4444;
-	desc.xAddr = "127.0.0.1";
-	desc.pFuncOnConnected = onConnected;
-	desc.pFuncOnDisconncted = onDisconnected;
-	desc.pFuncOnRecv = onRecv;
+	/*SServerInitDesc desc = {0};
+	desc.uMaxConnUser = 5;
+	desc.pFuncOnAcceptUser = onConnected;
+	desc.pFuncOnDisconnctedUser = onDisconnectedUser;
+	desc.pFuncOnDisconnctedServer = onDisconnectedServer;
+	desc.pFuncOnRecvUser = onRecvUser;
+	desc.pFuncOnRecvServer = onRecvServer;
 
 	eng.Init(&desc);
-	int nRet = eng.Start();
+	int nRet = eng.Start("127.0.0.1", 4444);
 	
 	if(nRet != kSServerResult_Ok)
 	{
 		LOGPRINT("Start server failed.Error:%d", nRet);
 		exit(1);
-	}
+	}*/
+	DESC_NETWORK desc = {0};
+	desc.OnAcceptServer = (ACCEPTFUNC)onAcceptServer;
+	desc.OnAcceptUser = (ACCEPTFUNC)onAcceptUser;
+	desc.OnDisconnectServer = (DISCONNECTFUNC)onDisconnectedServer;
+	desc.OnDisconnectUser = (DISCONNECTFUNC)onDisconnectedUser;
+	desc.OnRecvFromServerTCP = (RECVFUNC)onRecvServer;
+	desc.OnRecvFromUserTCP = (RECVFUNC)onRecvUser;
+
+	svr.CreateNetwork(&desc, 0, 0);
+	svr.StartServerWithServerSide("127.0.0.1", 4444);
 
 	for(;;)
 	{

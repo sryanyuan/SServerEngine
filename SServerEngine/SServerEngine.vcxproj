@@ -87,6 +87,7 @@
     <ClInclude Include="Def.h" />
     <ClInclude Include="IndexManager.h" />
     <ClInclude Include="Logger.h" />
+    <ClInclude Include="NetbaseWrapper.h" />
     <ClInclude Include="SServerBuffer.h" />
     <ClInclude Include="SServerConn.h" />
     <ClInclude Include="SServerEngine.h" />
@@ -97,6 +98,7 @@
     <ClCompile Include="create_index.cpp" />
     <ClCompile Include="IndexManager.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NetbaseWrapper.cpp" />
     <ClCompile Include="SServerConn.cpp" />
     <ClCompile Include="SServerEngine.cpp" />
     <ClCompile Include="stdafx.cpp" />

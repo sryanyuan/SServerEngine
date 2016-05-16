@@ -10,6 +10,15 @@
 //////////////////////////////////////////////////////////////////////////
 class SServerEngine;
 //////////////////////////////////////////////////////////////////////////
+enum SServerConnStateType
+{
+	kSServerConnState_None,
+	kSServerConnState_Connecting,
+	kSServerConnState_Connected,
+	kSServerConnState_ConnectFailed,
+	kSServerConnState_Disconnected
+};
+//////////////////////////////////////////////////////////////////////////
 class SServerConn
 {
 	friend class SServerEngine;
@@ -17,6 +26,14 @@ class SServerConn
 public:
 	SServerConn();
 	~SServerConn();
+
+public:
+	void SetAddress(const sockaddr_in* _pAddr);
+	sockaddr_in* GetAddress();
+	bool GetAddress(char* _pBuffer, unsigned short* _pPort);
+
+	void Callback_OnConnectSuccess();
+	void Callback_OnConnectFailed();
 
 private:
 	void readHead();
@@ -27,10 +44,19 @@ private:
 	bufferevent* pEv;
 	unsigned int uConnIndex;
 	evutil_socket_t fd;
+	bool bServerConn;
+	SServerConnStateType eConnState;
 
 	unsigned int m_uPacketHeadLength;
 
 	SServerBuffer m_xReadBuffer;
+
+	sockaddr_in m_stAddress;
+
+	//	for connect to server
+	FUNC_ONCONNECTFAILED m_fnOnConnectFailed;
+	FUNC_ONCONNECTSUCCESS m_fnOnConnectSuccess;
+	void* m_pConnectResultArg;
 };
 //////////////////////////////////////////////////////////////////////////
 #endif

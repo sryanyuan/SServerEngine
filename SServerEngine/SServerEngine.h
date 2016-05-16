@@ -45,10 +45,6 @@
 
 #endif
 //////////////////////////////////////////////////////////////////////////
-typedef void (*FUNC_ONCONNECTED)(unsigned int);
-typedef void (*FUNC_ONDISCONNECTED)(unsigned int);
-typedef void (*FUNC_ONRECV)(unsigned int, char*, unsigned int);
-//////////////////////////////////////////////////////////////////////////
 enum SServerResultType
 {
 	kSServerResult_Ok	=	0,
@@ -66,8 +62,11 @@ struct SServerEvent
 
 enum SServerActionType
 {
-	kSServerAction_Close,
-	kSServerAction_Send,
+	kSServerAction_CloseUserConn,
+	kSServerAction_CloseServerConn,
+	kSServerAction_SendToUser,
+	kSServerAction_SendToServer,
+	kSServerAction_Connect
 };
 
 struct SServerAction
@@ -77,16 +76,27 @@ struct SServerAction
 	unsigned short uTag;
 };
 
-struct SServerInitDesc
+struct SServerActionConnectContext
 {
-	std::string xAddr;
-	unsigned short uPort; 
-	size_t uMaxConn;
+	sockaddr_in addr;
+	FUNC_ONCONNECTSUCCESS fnSuccess;
+	FUNC_ONCONNECTFAILED fnFailed;
+	void* pArg;
+};
+
+struct SServerInitDesc
+{ 
+	size_t uMaxConnUser;
+	size_t uMaxConnServer;
 
 	//	callbacks
-	FUNC_ONCONNECTED pFuncOnConnected;
-	FUNC_ONDISCONNECTED pFuncOnDisconncted;
-	FUNC_ONRECV pFuncOnRecv;
+	FUNC_ONACCEPT pFuncOnAcceptUser;
+	FUNC_ONDISCONNECTED pFuncOnDisconnctedUser;
+	FUNC_ONRECV pFuncOnRecvUser;
+
+	FUNC_ONACCEPT pFuncOnAcceptServer;
+	FUNC_ONDISCONNECTED pFuncOnDisconnctedServer;
+	FUNC_ONRECV pFuncOnRecvServer;
 };
 
 struct SServerAutoLocker
@@ -111,35 +121,62 @@ public:
 
 public:
 	int Init(const SServerInitDesc* _pDesc);
-	int Start();
+	int Start(const char* _pszAddr, unsigned short _uPort);
+	int Connect(const char* _pszAddr, unsigned short _sPort, FUNC_ONCONNECTSUCCESS _fnSuccess, FUNC_ONCONNECTFAILED _fnFailed, void* _pArg);
 
 	//	thread-safe
-	int SendPacket(unsigned int _uConnIndex, char* _pData, size_t _uLength);
-	int CloseConnection(unsigned int _uConnIndex);
+	int SendPacketToUser(unsigned int _uConnIndex, char* _pData, size_t _uLength);
+	int SendPacketToServer(unsigned int _uConnIndex, char* _pData, size_t _uLength);
+	int CloseUserConnection(unsigned int _uConnIndex);
+	int CloseServerConnection(unsigned int _uConnIndex);
 
 public:
-	inline unsigned int GetMaxConn()						{return m_uMaxConn;}
-	inline void SetMaxConn(unsigned int _uConn)				{m_uMaxConn = _uConn;}
+	inline unsigned int GetMaxConnUser()						{return m_uMaxConnUser;}
+	inline void SetMaxConnUser(unsigned int _uConn)				{m_uMaxConnUser = _uConn;}
 
-	inline SServerConn* GetConn(unsigned int _uConnIndex)
+	inline int GetConnectedServerCount()					{return m_nConnectedServerCount;}
+	inline int GetConnectedUserCount()						{return m_nConnectedUserCount;}
+
+	inline SServerConn* GetUserConn(unsigned int _uConnIndex)
 	{
-		if(_uConnIndex > m_uMaxConn ||
+		if(_uConnIndex > m_uMaxConnUser ||
 			0 == _uConnIndex)
 		{
 			LOGERROR("Invalid conn index %d", _uConnIndex);
 			return NULL;
 		}
-		return m_pConnArray[_uConnIndex];
+		return m_pUserConnArray[_uConnIndex];
 	}
-	inline void SetConn(unsigned int _uConnIndex, SServerConn* conn)
+	inline void SetUserConn(unsigned int _uConnIndex, SServerConn* conn)
 	{
-		if(_uConnIndex > m_uMaxConn ||
+		if(_uConnIndex > m_uMaxConnUser ||
 			0 == _uConnIndex)
 		{
 			LOGERROR("Invalid conn index %d", _uConnIndex);
 			return;
 		}
-		m_pConnArray[_uConnIndex] = conn;
+		m_pUserConnArray[_uConnIndex] = conn;
+	}
+
+	inline SServerConn* GetServerConn(unsigned int _uConnIndex)
+	{
+		if(_uConnIndex > m_uMaxConnServer ||
+			0 == _uConnIndex)
+		{
+			LOGERROR("Invalid conn index %d", _uConnIndex);
+			return NULL;
+		}
+		return m_pServerConnArray[_uConnIndex];
+	}
+	inline void SetServerConn(unsigned int _uConnIndex, SServerConn* conn)
+	{
+		if(_uConnIndex > m_uMaxConnServer ||
+			0 == _uConnIndex)
+		{
+			LOGERROR("Invalid conn index %d", _uConnIndex);
+			return;
+		}
+		m_pServerConnArray[_uConnIndex] = conn;
 	}
 
 	inline void LockSendBuffer()
@@ -151,14 +188,21 @@ public:
 		pthread_mutex_unlock(&m_xSendMutex);
 	}
 
-	void Callback_OnConnected(unsigned int _uIndex);
-	void Callback_OnDisconnected(unsigned int _uIndex);
-	void Callback_OnRecv(unsigned int _uIndex, char* _pData, unsigned int _uLength);
+	void Callback_OnAcceptUser(unsigned int _uIndex);
+	void Callback_OnAcceptServer(unsigned int _uIndex);
+	void Callback_OnDisconnectedUser(unsigned int _uIndex);
+	void Callback_OnDisconnectedServer(unsigned int _uIndex);
+	void Callback_OnRecvUser(unsigned int _uIndex, char* _pData, unsigned int _uLength);
+	void Callback_OnRecvServer(unsigned int _uIndex,  char* _pData, unsigned int _uLength);
 
 protected:
-	void onConnectionClosed(SServerConn* pConn);
+	void onConnectionClosed(SServerConn* _pConn);
+	void onUserConnectionClosed(SServerConn* _pConn);
+	void onServerConnectionClosed(SServerConn* _pConn);
 	void processConnEvent();
 	void awake();
+
+	void processConnectAction(SServerActionConnectContext* _pAction);
 
 public:
 	static void* PTW32_CDECL __threadEntry(void*);
@@ -171,28 +215,38 @@ public:
 
 	static void __onThreadRead(struct bufferevent* pEv, void* pCtx);
 
-private:
+protected:
 	pthread_t m_stThreadId;
 	event_base* m_pEventBase;
 	evconnlistener* m_pConnListener;
 
 	std::string m_xAddr;
 	unsigned short m_uPort;
-	size_t m_uMaxConn;
+	size_t m_uMaxConnUser;
+	size_t m_uMaxConnServer;
 
-	IndexManager m_xIndexMgr;
-	SServerConn** m_pConnArray;
+	IndexManager m_xUserIndexMgr;
+	IndexManager m_xServerIndexMgr;
+	SServerConn** m_pUserConnArray;
+	SServerConn** m_pServerConnArray;
 
 	evutil_socket_t m_arraySocketPair[2];
 	bufferevent* m_pBvEvent;
 
 	pthread_mutex_t m_xSendMutex;
-	SServerBuffer m_xSendBuffer;
+	SServerBuffer m_xEventBuffer;
 
 	//	callbacks
-	FUNC_ONCONNECTED m_pFuncOnConnected;
-	FUNC_ONDISCONNECTED m_pFuncOnDisconnected;
-	FUNC_ONRECV m_pFuncOnRecv;
+	FUNC_ONACCEPT m_pFuncOnAcceptUser;
+	FUNC_ONACCEPT m_pFuncOnAcceptServer;
+	FUNC_ONDISCONNECTED m_pFuncOnDisconnectedUser;
+	FUNC_ONDISCONNECTED m_pFuncOnDisconnectedServer;
+	FUNC_ONRECV m_pFuncOnRecvUser;
+	FUNC_ONRECV m_pFuncOnRecvServer;
+
+	//	connected count
+	int m_nConnectedUserCount;
+	int m_nConnectedServerCount;
 };
 //////////////////////////////////////////////////////////////////////////
 #endif

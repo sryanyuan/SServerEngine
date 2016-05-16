@@ -6,5 +6,14 @@
 #define DEF_DEFAULT_WRITEBUFFERSIZE	(1024 * 5)
 #define DEF_DEFAULT_READBUFFERSIZE	(1024 * 5)
 #define DEF_DEFAULT_ENGINE_WRITEBUFFERSIZE	(5 * 1024 * 1024)	// 5M
+
+//////////////////////////////////////////////////////////////////////////
+//	function
+//////////////////////////////////////////////////////////////////////////
+typedef void (__stdcall *FUNC_ONACCEPT)(unsigned int);
+typedef void (__stdcall *FUNC_ONDISCONNECTED)(unsigned int);
+typedef void (__stdcall *FUNC_ONRECV)(unsigned int, char*, unsigned int);
+typedef void (__stdcall *FUNC_ONCONNECTSUCCESS)(unsigned int, void*);
+typedef void (__stdcall *FUNC_ONCONNECTFAILED)(unsigned int, void*);
 //////////////////////////////////////////////////////////////////////////
 #endif
