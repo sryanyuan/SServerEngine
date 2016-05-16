@@ -54,7 +54,7 @@ void __stdcall onRecvUser(unsigned int _index, char* _data, unsigned int _len)
 	printThreadId();
 	LOGINFO("%d recv user %s length %d", _index, tx, _len);
 
-	/*if('Q' == _data[0])
+	if('Q' == _data[0])
 	{
 		eng.CloseUserConnection(_index);
 	}
@@ -69,8 +69,8 @@ void __stdcall onRecvUser(unsigned int _index, char* _data, unsigned int _len)
 	else if('D' == _data[0])
 	{
 		eng.Connect("127.0.0.1", 2223, onConnectSuccess, onConnectFailed, NULL);
-	}*/
-	if('Q' == _data[0])
+	}
+	/*if('Q' == _data[0])
 	{
 		svr.CompulsiveDisconnectUser(_index);
 	}
@@ -85,7 +85,7 @@ void __stdcall onRecvUser(unsigned int _index, char* _data, unsigned int _len)
 	else if('D' == _data[0])
 	{
 		svr.ConnectToServerWithServerSide("127.0.0.1", 2223, CONNECTSUCCESSFUNC(onConnectSuccess), CONNECTFAILFUNC(onConnectFailed), NULL);
-	}
+	}*/
 }
 
 void __stdcall onRecvServer(unsigned int _index, char* _data, unsigned int _len)
@@ -117,9 +117,10 @@ int main(int argc, char* argv[])
 #endif
 	printThreadId();
 
-	/*SServerInitDesc desc = {0};
+	SServerInitDesc desc = {0};
 	desc.uMaxConnUser = 5;
-	desc.pFuncOnAcceptUser = onConnected;
+	desc.bUseIOCP = true;
+	desc.pFuncOnAcceptUser = onAcceptUser;
 	desc.pFuncOnDisconnctedUser = onDisconnectedUser;
 	desc.pFuncOnDisconnctedServer = onDisconnectedServer;
 	desc.pFuncOnRecvUser = onRecvUser;
@@ -132,8 +133,8 @@ int main(int argc, char* argv[])
 	{
 		LOGPRINT("Start server failed.Error:%d", nRet);
 		exit(1);
-	}*/
-	DESC_NETWORK desc = {0};
+	}
+	/*DESC_NETWORK desc = {0};
 	desc.dwMaxUserNum = 5;
 	desc.OnAcceptServer = (ACCEPTFUNC)onAcceptServer;
 	desc.OnAcceptUser = (ACCEPTFUNC)onAcceptUser;
@@ -143,7 +144,7 @@ int main(int argc, char* argv[])
 	desc.OnRecvFromUserTCP = (RECVFUNC)onRecvUser;
 
 	svr.CreateNetwork(&desc, 0, 0);
-	svr.StartServerWithServerSide("127.0.0.1", 4444);
+	svr.StartServerWithServerSide("127.0.0.1", 4444);*/
 
 	for(;;)
 	{

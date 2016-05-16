@@ -56,6 +56,7 @@ struct SServerInitDesc
 { 
 	size_t uMaxConnUser;
 	size_t uMaxConnServer;
+	bool bUseIOCP;
 
 	//	callbacks
 	FUNC_ONACCEPT pFuncOnAcceptUser;
@@ -145,6 +146,7 @@ protected:
 	pthread_t m_stThreadId;
 	event_base* m_pEventBase;
 	evconnlistener* m_pConnListener;
+	bool m_bUseIOCP;
 
 	std::string m_xAddr;
 	unsigned short m_uPort;

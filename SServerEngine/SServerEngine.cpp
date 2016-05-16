@@ -56,6 +56,8 @@ SServerEngine::SServerEngine()
 	m_pFuncOnRecvServer = NULL;
 
 	m_nConnectedServerCount = m_nConnectedUserCount = 0;
+
+	m_bUseIOCP = false;
 }
 
 SServerEngine::~SServerEngine()
@@ -99,6 +101,9 @@ int SServerEngine::Init(const SServerInitDesc* _pDesc)
 	m_pFuncOnAcceptServer = _pDesc->pFuncOnAcceptServer;
 	m_pFuncOnDisconnectedServer = _pDesc->pFuncOnDisconnctedServer;
 	m_pFuncOnRecvServer = _pDesc->pFuncOnRecvServer;
+
+	//	use iocp
+	m_bUseIOCP = _pDesc->bUseIOCP;
 
 	return kSServerResult_Ok;
 }
@@ -563,7 +568,24 @@ void* SServerEngine::__threadEntry(void* _pArg)
 
 	//	initialize
 	//evthread_use_windows_threads();
-	pIns->m_pEventBase = event_base_new();
+	if(pIns->m_bUseIOCP)
+	{
+		evthread_use_windows_threads();
+		event_config* evcfg = event_config_new();
+		event_config_set_flag(evcfg, EVENT_BASE_FLAG_STARTUP_IOCP);
+		pIns->m_pEventBase = event_base_new_with_config(evcfg);
+		event_config_free(evcfg);
+	}
+	else
+	{
+		pIns->m_pEventBase = event_base_new();
+	}
+
+	if(NULL == pIns->m_pEventBase)
+	{
+		LOGERROR("Create event_base failed");
+		return (void*)-1;
+	}
 
 	//	create socket pair
 	if (evutil_socketpair(AF_UNIX, SOCK_STREAM, 0, pIns->m_arraySocketPair))
@@ -577,7 +599,7 @@ void* SServerEngine::__threadEntry(void* _pArg)
 	pIns->m_pBvEvent = bufferevent_socket_new(pIns->m_pEventBase, pIns->m_arraySocketPair[0], 0);
 	if (NULL == pIns->m_pBvEvent)
 	{
-		LOGERROR("Create bufferevent fail");
+		LOGERROR("Create bufferevent failed");
 		return (void*)-1;
 	}
 
