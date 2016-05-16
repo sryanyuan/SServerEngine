@@ -5,6 +5,8 @@
 #include "SServerEngine.h"
 #include "NetbaseWrapper.h"
 
+#ifndef _LIB
+
 SServerEngine eng;
 NetbaseWrapper svr;
 
@@ -150,3 +152,4 @@ int _tmain(int argc, _TCHAR* argv[])
 	return 0;
 }
 
+#endif

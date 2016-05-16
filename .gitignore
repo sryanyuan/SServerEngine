@@ -1,5 +1,11 @@
 SServerEngine/Debug/
+SServerEngine/Release/
+SServerEngine/StaticDebug/
+SServerEngine/StaticRelease/
 SServerEngine.sdf
 SServerEngine.v11.suo
 Debug/
+Release/
+StaticDebug/
+StaticRelease/
 SServerEngine.opensdf
