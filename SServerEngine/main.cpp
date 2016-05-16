@@ -1,7 +1,7 @@
 // SServerEngine.cpp : 定义控制台应用程序的入口点。
 //
 
-#include "stdafx.h"
+//#include "stdafx.h"
 #include "SServerEngine.h"
 #include "NetbaseWrapper.h"
 
@@ -108,7 +108,7 @@ void __stdcall onRecvServer(unsigned int _index, char* _data, unsigned int _len)
 	}
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+int main(int argc, char* argv[])
 {
 #ifdef WIN32
 	WSADATA wsa_data;
