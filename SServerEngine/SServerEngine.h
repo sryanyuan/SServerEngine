@@ -10,7 +10,6 @@
 #include <WinSock2.h>
 #include <stdio.h>
 #include "IndexManager.h"
-#include "Logger.h"
 #include "SServerConn.h"
 #include "Def.h"
 //////////////////////////////////////////////////////////////////////////
@@ -106,56 +105,14 @@ public:
 	inline int GetConnectedServerCount()					{return m_nConnectedServerCount;}
 	inline int GetConnectedUserCount()						{return m_nConnectedUserCount;}
 
-	inline SServerConn* GetUserConn(unsigned int _uConnIndex)
-	{
-		if(_uConnIndex > m_uMaxConnUser ||
-			0 == _uConnIndex)
-		{
-			LOGERROR("Invalid conn index %d", _uConnIndex);
-			return NULL;
-		}
-		return m_pUserConnArray[_uConnIndex];
-	}
-	inline void SetUserConn(unsigned int _uConnIndex, SServerConn* conn)
-	{
-		if(_uConnIndex > m_uMaxConnUser ||
-			0 == _uConnIndex)
-		{
-			LOGERROR("Invalid conn index %d", _uConnIndex);
-			return;
-		}
-		m_pUserConnArray[_uConnIndex] = conn;
-	}
+	inline SServerConn* GetUserConn(unsigned int _uConnIndex);
+	inline void SetUserConn(unsigned int _uConnIndex, SServerConn* conn);
 
-	inline SServerConn* GetServerConn(unsigned int _uConnIndex)
-	{
-		if(_uConnIndex > m_uMaxConnServer ||
-			0 == _uConnIndex)
-		{
-			LOGERROR("Invalid conn index %d", _uConnIndex);
-			return NULL;
-		}
-		return m_pServerConnArray[_uConnIndex];
-	}
-	inline void SetServerConn(unsigned int _uConnIndex, SServerConn* conn)
-	{
-		if(_uConnIndex > m_uMaxConnServer ||
-			0 == _uConnIndex)
-		{
-			LOGERROR("Invalid conn index %d", _uConnIndex);
-			return;
-		}
-		m_pServerConnArray[_uConnIndex] = conn;
-	}
+	inline SServerConn* GetServerConn(unsigned int _uConnIndex);
+	inline void SetServerConn(unsigned int _uConnIndex, SServerConn* conn);
 
-	inline void LockSendBuffer()
-	{
-		pthread_mutex_lock(&m_xSendMutex);
-	}
-	inline void UnlockSendBuffer()
-	{
-		pthread_mutex_unlock(&m_xSendMutex);
-	}
+	inline void LockSendBuffer();
+	inline void UnlockSendBuffer();
 
 	void Callback_OnAcceptUser(unsigned int _uIndex);
 	void Callback_OnAcceptServer(unsigned int _uIndex);

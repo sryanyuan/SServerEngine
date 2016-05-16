@@ -1,5 +1,6 @@
 #include "SServerEngine.h"
 #include <event2\thread.h>
+#include "Logger.h"
 //////////////////////////////////////////////////////////////////////////
 #ifdef WIN32
 
@@ -203,6 +204,60 @@ int SServerEngine::CloseUserConnection(unsigned int _uConnIndex)
 	awake();
 
 	return 0;
+}
+
+SServerConn* SServerEngine::GetUserConn(unsigned int _uConnIndex)
+{
+	if(_uConnIndex > m_uMaxConnUser ||
+		0 == _uConnIndex)
+	{
+		LOGERROR("Invalid conn index %d", _uConnIndex);
+		return NULL;
+	}
+	return m_pUserConnArray[_uConnIndex];
+}
+
+void SServerEngine::SetUserConn(unsigned int _uConnIndex, SServerConn* conn)
+{
+	if(_uConnIndex > m_uMaxConnUser ||
+		0 == _uConnIndex)
+	{
+		LOGERROR("Invalid conn index %d", _uConnIndex);
+		return;
+	}
+	m_pUserConnArray[_uConnIndex] = conn;
+}
+
+SServerConn* SServerEngine::GetServerConn(unsigned int _uConnIndex)
+{
+	if(_uConnIndex > m_uMaxConnServer ||
+		0 == _uConnIndex)
+	{
+		LOGERROR("Invalid conn index %d", _uConnIndex);
+		return NULL;
+	}
+	return m_pServerConnArray[_uConnIndex];
+}
+
+void SServerEngine::SetServerConn(unsigned int _uConnIndex, SServerConn* conn)
+{
+	if(_uConnIndex > m_uMaxConnServer ||
+		0 == _uConnIndex)
+	{
+		LOGERROR("Invalid conn index %d", _uConnIndex);
+		return;
+	}
+	m_pServerConnArray[_uConnIndex] = conn;
+}
+
+void SServerEngine::LockSendBuffer()
+{
+	pthread_mutex_lock(&m_xSendMutex);
+}
+
+void SServerEngine::UnlockSendBuffer()
+{
+	pthread_mutex_unlock(&m_xSendMutex);
 }
 
 int SServerEngine::CloseServerConnection(unsigned int _uConnIndex)

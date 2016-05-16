@@ -4,6 +4,7 @@
 //#include "stdafx.h"
 #include "SServerEngine.h"
 #include "NetbaseWrapper.h"
+#include "Logger.h"
 
 #ifndef _LIB
 
