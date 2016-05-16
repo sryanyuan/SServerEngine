@@ -637,6 +637,7 @@ void SServerEngine::__onConnEvent(struct bufferevent* pEv, short what, void* pCt
 			pConn->Callback_OnConnectSuccess();
 			pConn->eConnState = kSServerConnState_Connected;
 			pEng->Callback_OnAcceptServer(pConn->uConnIndex);
+			++pEng->m_nConnectedServerCount;
 		}
 		return;
 	}

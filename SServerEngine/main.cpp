@@ -131,6 +131,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		exit(1);
 	}*/
 	DESC_NETWORK desc = {0};
+	desc.dwMaxUserNum = 5;
 	desc.OnAcceptServer = (ACCEPTFUNC)onAcceptServer;
 	desc.OnAcceptUser = (ACCEPTFUNC)onAcceptUser;
 	desc.OnDisconnectServer = (DISCONNECTFUNC)onDisconnectedServer;

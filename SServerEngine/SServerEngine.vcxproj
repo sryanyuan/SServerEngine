@@ -83,7 +83,6 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="create_index.h" />
     <ClInclude Include="Def.h" />
     <ClInclude Include="IndexManager.h" />
     <ClInclude Include="Logger.h" />
@@ -95,7 +94,6 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="create_index.cpp" />
     <ClCompile Include="IndexManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NetbaseWrapper.cpp" />
