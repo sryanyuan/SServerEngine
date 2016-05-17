@@ -12,6 +12,7 @@ NetbaseWrapper::~NetbaseWrapper()
 
 BOOL __stdcall NetbaseWrapper::CreateNetwork(DESC_NETWORK* desc,DWORD dwUserAcceptInterval,DWORD dwServerAcceptInterval)
 {
+	memset(&m_stDesc, 0, sizeof(m_stDesc));
 	m_stDesc.pFuncOnAcceptUser = (FUNC_ONACCEPT)desc->OnAcceptUser;
 	m_stDesc.pFuncOnDisconnctedUser = (FUNC_ONDISCONNECTED)desc->OnDisconnectUser;
 	m_stDesc.pFuncOnRecvUser = (FUNC_ONRECV)desc->OnRecvFromUserTCP;
@@ -19,6 +20,11 @@ BOOL __stdcall NetbaseWrapper::CreateNetwork(DESC_NETWORK* desc,DWORD dwUserAcce
 	m_stDesc.pFuncOnDisconnctedServer = (FUNC_ONDISCONNECTED)desc->OnDisconnectServer;
 	m_stDesc.pFuncOnRecvServer = (FUNC_ONRECV)desc->OnRecvFromServerTCP;
 	m_stDesc.uMaxConnUser = desc->dwMaxUserNum;
+
+	if(desc->dwFlag & 0x00000001)
+	{
+		m_stDesc.bUseIOCP = true;
+	}
 
 	Init(&m_stDesc);
 
@@ -212,15 +218,19 @@ BOOL __stdcall NetbaseWrapper::ConnectToServerWithServerSide(char* szIP,WORD por
 
 BOOL __stdcall NetbaseWrapper::StartServerWithUserSide(char* ip,WORD port)
 {
-	return false;
-}
-
-BOOL __stdcall NetbaseWrapper::StartServerWithServerSide(char* ip,WORD port)
-{
 	if(0 == Start(ip, (unsigned short)port))
 	{
 		return TRUE;
 	}
+	return FALSE;
+}
+
+BOOL __stdcall NetbaseWrapper::StartServerWithServerSide(char* ip,WORD port)
+{
+	/*if(0 == Start(ip, (unsigned short)port))
+	{
+		return TRUE;
+	}*/
 	return FALSE;
 }
 

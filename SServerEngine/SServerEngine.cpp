@@ -5,27 +5,27 @@
 #ifdef WIN32
 
 #pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "lib/pthread/pthreadVC2.lib")
+#pragma comment(lib, "pthreadVC2.lib")
 
 #if _MSC_VER == 1700
 #ifdef _DEBUG
-#pragma comment(lib, "lib/libevent/libevent_vc11_d.lib")
-#pragma comment(lib, "lib/libevent/libevent_core_vc11_d.lib")
-#pragma comment(lib, "lib/libevent/libevent_extras_vc11_d.lib")
+#pragma comment(lib, "libevent_vc11_d.lib")
+#pragma comment(lib, "libevent_core_vc11_d.lib")
+#pragma comment(lib, "libevent_extras_vc11_d.lib")
 #else
-#pragma comment(lib, "lib/libevent/libevent_vc11.lib")
-#pragma comment(lib, "lib/libevent/libevent_core_vc11.lib")
-#pragma comment(lib, "lib/libevent/libevent_extras_vc11.lib")
+#pragma comment(lib, "libevent_vc11.lib")
+#pragma comment(lib, "libevent_core_vc11.lib")
+#pragma comment(lib, "libevent_extras_vc11.lib")
 #endif
 #elif _MSC_VER == 1500
 #ifdef _DEBUG
-#pragma comment(lib, "lib/libevent/libevent_vc9_d.lib")
-#pragma comment(lib, "lib/libevent/libevent_core_vc9_d.lib")
-#pragma comment(lib, "lib/libevent/libevent_extras_vc9_d.lib")
+#pragma comment(lib, "libevent_vc9_d.lib")
+#pragma comment(lib, "libevent_core_vc9_d.lib")
+#pragma comment(lib, "libevent_extras_vc9_d.lib")
 #else
-#pragma comment(lib, "lib/libevent/libevent_vc9.lib")
-#pragma comment(lib, "lib/libevent/libevent_core_vc9.lib")
-#pragma comment(lib, "lib/libevent/libevent_extras_vc9.lib")
+#pragma comment(lib, "libevent_vc9.lib")
+#pragma comment(lib, "libevent_core_vc9.lib")
+#pragma comment(lib, "libevent_extras_vc9.lib")
 #endif
 #else
 #error VS version not support
@@ -638,6 +638,7 @@ void* SServerEngine::__threadEntry(void* _pArg)
 	//evthread_use_windows_threads();
 	if(pIns->m_bUseIOCP)
 	{
+		LOGINFO("Use IOCP mode.");
 		evthread_use_windows_threads();
 		event_config* evcfg = event_config_new();
 		event_config_set_flag(evcfg, EVENT_BASE_FLAG_STARTUP_IOCP);
@@ -705,7 +706,7 @@ void* SServerEngine::__threadEntry(void* _pArg)
 	}
 	evtimer_add(pIns->m_pTimerEvent, &tv);
 
-	LOGPRINT("Thread working...");
+	LOGPRINT("Thread working, Id %d", GetCurrentThreadId());
 
 	//	event loop
 	event_base_dispatch(pIns->m_pEventBase);
@@ -732,7 +733,7 @@ void SServerEngine::__onAcceptConn(struct evconnlistener *pEvListener, evutil_so
 	}
 
 #ifdef _DEBUG
-	LOGPRINT("Accept conn[%d]", uConnIndex);
+	LOGPRINT("Accept conn[%d], ThreadId %d", uConnIndex, GetCurrentThreadId());
 #endif
 
 	//	register event
