@@ -109,6 +109,11 @@ void __stdcall onRecvServer(unsigned int _index, char* _data, unsigned int _len)
 	}
 }
 
+void __stdcall onTimer(unsigned int _id)
+{
+	LOGINFO("timer %d triggered %d", _id, GetTickCount());
+}
+
 int main(int argc, char* argv[])
 {
 #ifdef WIN32
@@ -128,6 +133,8 @@ int main(int argc, char* argv[])
 
 	eng.Init(&desc);
 	int nRet = eng.Start("127.0.0.1", 4444);
+
+	eng.AddTimerJob(1, 1000, onTimer);
 	
 	if(nRet != kSServerResult_Ok)
 	{

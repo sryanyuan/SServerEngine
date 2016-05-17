@@ -22,6 +22,12 @@ BOOL __stdcall NetbaseWrapper::CreateNetwork(DESC_NETWORK* desc,DWORD dwUserAcce
 
 	Init(&m_stDesc);
 
+	//	add timer events
+	for(DWORD i = 0; i < desc->dwCustomDefineEventNum; ++i)
+	{
+		AddTimerJob(i, int(desc->pEvent[i].dwPeriodicTime), FUNC_ONTIMER(desc->pEvent[i].pEventFunc));
+	}
+
 	return TRUE;
 }
 

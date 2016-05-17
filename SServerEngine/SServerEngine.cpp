@@ -45,6 +45,7 @@ SServerEngine::SServerEngine()
 	m_uMaxConnServer = DEF_DEFAULT_MAX_CONN;
 	m_pUserConnArray = NULL;
 	pthread_mutex_init(&m_xSendMutex, NULL);
+	pthread_mutex_init(&m_xTimerMutex, NULL);
 	m_xEventBuffer.AllocBuffer(DEF_DEFAULT_ENGINE_WRITEBUFFERSIZE);
 
 	m_pFuncOnAcceptUser = NULL;
@@ -58,6 +59,7 @@ SServerEngine::SServerEngine()
 	m_nConnectedServerCount = m_nConnectedUserCount = 0;
 
 	m_bUseIOCP = false;
+	m_pTimerEvent = NULL;
 }
 
 SServerEngine::~SServerEngine()
@@ -68,6 +70,7 @@ SServerEngine::~SServerEngine()
 		m_pUserConnArray = NULL;
 	}
 	pthread_mutex_destroy(&m_xSendMutex);
+	pthread_mutex_destroy(&m_xTimerMutex);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -560,6 +563,71 @@ void SServerEngine::processConnectAction(SServerActionConnectContext* _pAction)
 	//	wait for connect result
 }
 
+int SServerEngine::AddTimerJob(unsigned int _nJobId, unsigned int _nTriggerIntervalMS, FUNC_ONTIMER _fnOnTimer)
+{
+	SServerAutoLocker locker(&m_xTimerMutex);
+
+	SServerTimerJob* pJob = new SServerTimerJob;
+	memset(pJob, 0, sizeof(SServerTimerJob));
+	pJob->nJobId = _nJobId;
+	pJob->nTriggerIntervalMS = _nTriggerIntervalMS;
+	pJob->fnOnTimer = _fnOnTimer;
+	m_xTimerJobs.push_back(pJob);
+
+	return 0;
+}
+
+int SServerEngine::RemoveTimerJob(unsigned int _nJobId)
+{
+	SServerAutoLocker locker(&m_xTimerMutex);
+
+	SServerTimerJobList::iterator iterB = m_xTimerJobs.begin();
+	for(iterB;
+		iterB != m_xTimerJobs.end();
+		)
+	{
+		SServerTimerJob* pJob = *iterB;
+
+		if(pJob->nJobId == _nJobId)
+		{
+			delete pJob;
+			iterB = m_xTimerJobs.erase(iterB);
+		}
+		else
+		{
+			++iterB;
+		}
+	}
+
+	return 0;
+}
+
+void SServerEngine::processTimerJob()
+{
+	SServerAutoLocker locker(&m_xTimerMutex);
+	int nNowTick = int(GetTickCount());
+
+	SServerTimerJobList::const_iterator iterB = m_xTimerJobs.begin();
+	for(iterB;
+		iterB != m_xTimerJobs.end();
+		++iterB)
+	{
+		SServerTimerJob* pJob = *iterB;
+
+		if(nNowTick > pJob->nLastTriggerTime + pJob->nTriggerIntervalMS)
+		{
+			//	trigger
+			if(pJob->fnOnTimer)
+			{
+				pJob->fnOnTimer(pJob->nJobId);
+			}
+
+			//	update
+			pJob->nLastTriggerTime = nNowTick;
+		}
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////
 //	static handlers
 void* SServerEngine::__threadEntry(void* _pArg)
@@ -627,12 +695,23 @@ void* SServerEngine::__threadEntry(void* _pArg)
 		exit(kSServerResult_ListenFailed);
 	}
 
+	//	timer event
+	struct timeval tv = { 0, 50 * 1000 };
+	pIns->m_pTimerEvent = event_new(pIns->m_pEventBase, -1, EV_PERSIST, &SServerEngine::__onEventTimer, pIns);
+	if( NULL == pIns->m_pTimerEvent )
+	{
+		LOGERROR("Create lib event timer failed!");
+		exit(1);
+	}
+	evtimer_add(pIns->m_pTimerEvent, &tv);
+
 	LOGPRINT("Thread working...");
 
 	//	event loop
 	event_base_dispatch(pIns->m_pEventBase);
 	event_base_free(pIns->m_pEventBase);
 	pIns->m_pEventBase = NULL;
+	pIns->m_pTimerEvent = NULL;
 
 	return NULL;
 }
@@ -777,4 +856,10 @@ void SServerEngine::__onThreadRead(struct bufferevent* pEv, void* pCtx)
 	evbuffer_drain(pInput, evbuffer_get_length(pInput));
 
 	pEng->processConnEvent();
+}
+
+void SServerEngine::__onEventTimer(evutil_socket_t, short _nEvents, void * _pCxt)
+{
+	SServerEngine* pEng = (SServerEngine*)_pCxt;
+	pEng->processTimerJob();
 }

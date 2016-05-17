@@ -15,5 +15,6 @@ typedef void (__stdcall *FUNC_ONDISCONNECTED)(unsigned int);
 typedef void (__stdcall *FUNC_ONRECV)(unsigned int, char*, unsigned int);
 typedef void (__stdcall *FUNC_ONCONNECTSUCCESS)(unsigned int, void*);
 typedef void (__stdcall *FUNC_ONCONNECTFAILED)(unsigned int, void*);
+typedef void (__stdcall *FUNC_ONTIMER)(unsigned int);
 //////////////////////////////////////////////////////////////////////////
 #endif

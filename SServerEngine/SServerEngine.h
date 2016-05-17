@@ -7,6 +7,7 @@
 #include <event2/listener.h>
 #include <pthread/pthread.h>
 #include <string>
+#include <list>
 #include <WinSock2.h>
 #include <stdio.h>
 #include "IndexManager.h"
@@ -81,6 +82,15 @@ struct SServerAutoLocker
 	}
 	pthread_mutex_t* pMtx;
 };
+
+struct SServerTimerJob
+{
+	unsigned int nJobId;
+	int nLastTriggerTime;
+	int nTriggerIntervalMS;
+	FUNC_ONTIMER fnOnTimer;
+};
+typedef std::list<SServerTimerJob*> SServerTimerJobList;
 //////////////////////////////////////////////////////////////////////////
 class SServerEngine
 {
@@ -92,6 +102,8 @@ public:
 	int Init(const SServerInitDesc* _pDesc);
 	int Start(const char* _pszAddr, unsigned short _uPort);
 	int Connect(const char* _pszAddr, unsigned short _sPort, FUNC_ONCONNECTSUCCESS _fnSuccess, FUNC_ONCONNECTFAILED _fnFailed, void* _pArg);
+	int AddTimerJob(unsigned int _nJobId, unsigned int _nTriggerIntervalMS, FUNC_ONTIMER _fnOnTimer);
+	int RemoveTimerJob(unsigned int _nJobId);
 
 	//	thread-safe
 	int SendPacketToUser(unsigned int _uConnIndex, char* _pData, size_t _uLength);
@@ -130,6 +142,7 @@ protected:
 	void awake();
 
 	void processConnectAction(SServerActionConnectContext* _pAction);
+	void processTimerJob();
 
 public:
 	static void* PTW32_CDECL __threadEntry(void*);
@@ -141,6 +154,8 @@ public:
 	static void __onConnEvent(struct bufferevent* pEv, short what, void* pCtx);
 
 	static void __onThreadRead(struct bufferevent* pEv, void* pCtx);
+
+	static void __onEventTimer(evutil_socket_t, short _nEvents, void * _pCxt);
 
 protected:
 	pthread_t m_stThreadId;
@@ -175,6 +190,11 @@ protected:
 	//	connected count
 	int m_nConnectedUserCount;
 	int m_nConnectedServerCount;
+
+	//	timer list
+	event* m_pTimerEvent;
+	pthread_mutex_t m_xTimerMutex;
+	SServerTimerJobList m_xTimerJobs;
 };
 //////////////////////////////////////////////////////////////////////////
 #endif
