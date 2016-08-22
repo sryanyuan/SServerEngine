@@ -111,6 +111,10 @@ public:
 	int CloseUserConnection(unsigned int _uConnIndex);
 	int CloseServerConnection(unsigned int _uConnIndex);
 
+	//	synchronize send packet , within event callback
+	int SyncSendPacketToUser(unsigned int _uConnIndex, char* _pData, size_t _uLength);
+	int SyncSendPacketToServer(unsigned int _uConnIndex, char* _pData, size_t _uLength);
+
 public:
 	inline unsigned int GetMaxConnUser()						{return m_uMaxConnUser;}
 	inline void SetMaxConnUser(unsigned int _uConn)				{m_uMaxConnUser = _uConn;}
