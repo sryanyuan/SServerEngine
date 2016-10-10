@@ -38,6 +38,12 @@ enum SServerActionType
 	kSServerAction_Connect
 };
 
+enum SServerStatus
+{
+	kSServerStatus_Stop,
+	kSServerStatus_Running,
+};
+
 struct SServerAction
 {
 	unsigned short uAction;
@@ -101,9 +107,11 @@ public:
 public:
 	int Init(const SServerInitDesc* _pDesc);
 	int Start(const char* _pszAddr, unsigned short _uPort);
+	int Stop();
 	int Connect(const char* _pszAddr, unsigned short _sPort, FUNC_ONCONNECTSUCCESS _fnSuccess, FUNC_ONCONNECTFAILED _fnFailed, void* _pArg);
 	int AddTimerJob(unsigned int _nJobId, unsigned int _nTriggerIntervalMS, FUNC_ONTIMER _fnOnTimer);
 	int RemoveTimerJob(unsigned int _nJobId);
+	int ClearTimerJob();
 
 	//	thread-safe
 	int SendPacketToUser(unsigned int _uConnIndex, char* _pData, size_t _uLength);
@@ -114,8 +122,10 @@ public:
 	//	synchronize send packet , within event callback
 	int SyncSendPacketToUser(unsigned int _uConnIndex, char* _pData, size_t _uLength);
 	int SyncSendPacketToServer(unsigned int _uConnIndex, char* _pData, size_t _uLength);
+	int SyncConnect(const char* _pszAddr, unsigned short _sPort, FUNC_ONCONNECTSUCCESS _fnSuccess, FUNC_ONCONNECTFAILED _fnFailed, void* _pArg);
 
 public:
+	inline SServerStatus GetServerStatus()						{return m_eStatus;}
 	inline unsigned int GetMaxConnUser()						{return m_uMaxConnUser;}
 	inline void SetMaxConnUser(unsigned int _uConn)				{m_uMaxConnUser = _uConn;}
 
@@ -199,6 +209,10 @@ protected:
 	event* m_pTimerEvent;
 	pthread_mutex_t m_xTimerMutex;
 	SServerTimerJobList m_xTimerJobs;
+
+	// status
+	SServerStatus m_eStatus;
+	int m_nWorkingTid;
 };
 //////////////////////////////////////////////////////////////////////////
 #endif

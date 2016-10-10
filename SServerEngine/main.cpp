@@ -8,6 +8,7 @@
 
 #ifndef _LIB
 
+int nLibEventThreadStatus = 0;
 SServerEngine eng;
 NetbaseWrapper svr;
 
@@ -60,15 +61,19 @@ void __stdcall onRecvUser(unsigned int _index, char* _data, unsigned int _len)
 	}
 	else if('T' == _data[0])
 	{
-		eng.SendPacketToUser(_index, tx, _len);
+		eng.SyncSendPacketToUser(_index, tx, _len);
 	}
 	else if('C' == _data[0])
 	{
-		eng.Connect("127.0.0.1", 2222, onConnectSuccess, onConnectFailed, NULL);
+		eng.SyncConnect("127.0.0.1", 8000, onConnectSuccess, onConnectFailed, NULL);
 	}
 	else if('D' == _data[0])
 	{
-		eng.Connect("127.0.0.1", 2223, onConnectSuccess, onConnectFailed, NULL);
+		eng.SyncConnect("127.0.0.1", 2223, onConnectSuccess, onConnectFailed, NULL);
+	}
+	else if('S' == _data[0])
+	{
+		eng.Stop();
 	}
 	/*if('Q' == _data[0])
 	{
@@ -105,13 +110,24 @@ void __stdcall onRecvServer(unsigned int _index, char* _data, unsigned int _len)
 	}
 	else if('C' == _data[0])
 	{
-		eng.Connect("127.0.0.1", 2222, onConnectSuccess, onConnectFailed, NULL);
+		eng.Connect("127.0.0.1", 8000, onConnectSuccess, onConnectFailed, NULL);
 	}
 }
 
 void __stdcall onTimer(unsigned int _id)
 {
-	LOGINFO("timer %d triggered %d", _id, GetTickCount());
+	static int s_nLastTimerTime = 0;
+
+	if (s_nLastTimerTime == 0)
+	{
+		s_nLastTimerTime = GetTickCount();
+	}
+
+	if (GetTickCount() - s_nLastTimerTime > 1000 + 1000)
+	{
+		LOGERROR("timer timeout ?");
+	}
+	s_nLastTimerTime = GetTickCount();
 }
 
 int main(int argc, char* argv[])
@@ -124,7 +140,7 @@ int main(int argc, char* argv[])
 
 	SServerInitDesc desc = {0};
 	desc.uMaxConnUser = 5;
-	desc.bUseIOCP = true;
+	desc.bUseIOCP = false;
 	desc.pFuncOnAcceptUser = onAcceptUser;
 	desc.pFuncOnDisconnctedUser = onDisconnectedUser;
 	desc.pFuncOnDisconnctedServer = onDisconnectedServer;
@@ -156,6 +172,11 @@ int main(int argc, char* argv[])
 	for(;;)
 	{
 		Sleep(10);
+
+		if (eng.GetServerStatus() == kSServerStatus_Stop)
+		{
+			break;
+		}
 	}
 
 	return 0;

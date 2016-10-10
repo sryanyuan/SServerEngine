@@ -1,31 +1,35 @@
 #include "SServerEngine.h"
 #include <event2\thread.h>
+#include <assert.h>
 #include "Logger.h"
 //////////////////////////////////////////////////////////////////////////
 #ifdef WIN32
 
+#define LIBPATH_PTHREAD "lib/pthread/"
+#define LIBPATH_LIBEVENT "lib/libevent/"
+
 #pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "pthreadVC2.lib")
+#pragma comment(lib, LIBPATH_PTHREAD"pthreadVC2.lib")
 
 #if _MSC_VER == 1700
 #ifdef _DEBUG
-#pragma comment(lib, "libevent_vc11_d.lib")
-#pragma comment(lib, "libevent_core_vc11_d.lib")
-#pragma comment(lib, "libevent_extras_vc11_d.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_vc11_d.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_core_vc11_d.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_extras_vc11_d.lib")
 #else
-#pragma comment(lib, "libevent_vc11.lib")
-#pragma comment(lib, "libevent_core_vc11.lib")
-#pragma comment(lib, "libevent_extras_vc11.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_vc11.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_core_vc11.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_extras_vc11.lib")
 #endif
 #elif _MSC_VER == 1500
 #ifdef _DEBUG
-#pragma comment(lib, "libevent_vc9_d.lib")
-#pragma comment(lib, "libevent_core_vc9_d.lib")
-#pragma comment(lib, "libevent_extras_vc9_d.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_vc9_d.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_core_vc9_d.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_extras_vc9_d.lib")
 #else
-#pragma comment(lib, "libevent_vc9.lib")
-#pragma comment(lib, "libevent_core_vc9.lib")
-#pragma comment(lib, "libevent_extras_vc9.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_vc9.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_core_vc9.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_extras_vc9.lib")
 #endif
 #else
 #error VS version not support
@@ -35,6 +39,9 @@
 //////////////////////////////////////////////////////////////////////////
 SServerEngine::SServerEngine()
 {
+	m_eStatus = kSServerStatus_Stop;
+	m_nWorkingTid = 0;
+
 	m_pBvEvent = NULL;
 	m_pEventBase = NULL;
 	m_pConnListener = NULL;
@@ -122,6 +129,30 @@ int SServerEngine::Start(const char* _pszAddr, unsigned short _uPort)
 	return kSServerResult_Ok;
 }
 
+int SServerEngine::Stop()
+{
+	if(m_eStatus != kSServerStatus_Running)
+	{
+		return 1;
+	}
+
+#ifdef _DEBUG
+	int nTid = (int)GetCurrentThreadId();
+
+	if (nTid != m_nWorkingTid)
+	{
+		assert("Tid conflict");
+	}
+#endif
+
+	if (NULL != m_pEventBase)
+	{
+		return event_base_loopbreak(m_pEventBase);
+	}
+
+	return 2;
+}
+
 int SServerEngine::Connect(const char* _pszAddr, unsigned short _sPort, FUNC_ONCONNECTSUCCESS _fnSuccess, FUNC_ONCONNECTFAILED _fnFailed, void* _pArg)
 {
 	SServerAction action = {0};
@@ -143,6 +174,21 @@ int SServerEngine::Connect(const char* _pszAddr, unsigned short _sPort, FUNC_ONC
 	//	awake and process event
 	awake();
 
+	return 0;
+}
+
+int SServerEngine::SyncConnect(const char* _pszAddr, unsigned short _sPort, FUNC_ONCONNECTSUCCESS _fnSuccess, FUNC_ONCONNECTFAILED _fnFailed, void* _pArg)
+{
+	SServerAction action = {0};
+	SServerActionConnectContext ctx = {0};
+	action.uAction = kSServerAction_Connect;
+	ctx.addr.sin_family = AF_INET;
+	ctx.addr.sin_port = htons(_sPort);
+	ctx.addr.sin_addr.s_addr = inet_addr(_pszAddr);
+	ctx.fnSuccess =_fnSuccess;
+	ctx.fnFailed = _fnFailed;
+
+	processConnectAction(&ctx);
 	return 0;
 }
 
@@ -201,6 +247,11 @@ int SServerEngine::SyncSendPacketToServer(unsigned int _uConnIndex, char* _pData
 		LOGERROR("Failed to get conn, index:%d", _uConnIndex);
 		return 1;
 	}
+	if (pConn->eConnState != kSServerConnState_Connected)
+	{
+		LOGERROR("Trying to send to a disconnected connection");
+		return 2;
+	}
 
 	//	write head
 	unsigned int uNetLength = DEF_NETPROTOCOL_HEADER_LENGTH + _uLength;
@@ -225,6 +276,11 @@ int SServerEngine::SyncSendPacketToUser(unsigned int _uConnIndex, char* _pData, 
 	if (NULL == pConn) {
 		LOGERROR("Failed to get conn, index:%d", _uConnIndex);
 		return 1;
+	}
+	if (pConn->eConnState != kSServerConnState_Connected)
+	{
+		LOGERROR("Trying to send to a disconnected connection");
+		return 2;
 	}
 
 	//	write head
@@ -424,6 +480,7 @@ void SServerEngine::onServerConnectionClosed(SServerConn* _pConn)
 	--m_nConnectedServerCount; 
 }
 
+// process all events in libevent thread
 void SServerEngine::processConnEvent()
 {
 	SServerAction action = {0};
@@ -444,10 +501,13 @@ void SServerEngine::processConnEvent()
 				LOGERROR("Failed to get conn, index:%d", action.uIndex);
 			} else {
 				//	write head
-				unsigned int uNetLength = DEF_NETPROTOCOL_HEADER_LENGTH + action.uTag;
-				uNetLength = htonl(uNetLength);
-				bufferevent_write(pConn->pEv, &uNetLength, DEF_NETPROTOCOL_HEADER_LENGTH);
-				bufferevent_write(pConn->pEv, m_xEventBuffer.GetReadableBufferPtr(), action.uTag);
+				if (pConn->eConnState == kSServerConnState_Connected)
+				{
+					unsigned int uNetLength = DEF_NETPROTOCOL_HEADER_LENGTH + action.uTag;
+					uNetLength = htonl(uNetLength);
+					bufferevent_write(pConn->pEv, &uNetLength, DEF_NETPROTOCOL_HEADER_LENGTH);
+					bufferevent_write(pConn->pEv, m_xEventBuffer.GetReadableBufferPtr(), action.uTag);
+				}
 			}
 			m_xEventBuffer.Read(NULL, action.uTag);
 		} else if(kSServerAction_SendToServer == action.uAction) {
@@ -456,10 +516,13 @@ void SServerEngine::processConnEvent()
 				LOGERROR("Failed to get conn, index:%d", action.uIndex);
 			} else {
 				//	write head
-				unsigned int uNetLength = DEF_NETPROTOCOL_HEADER_LENGTH + action.uTag;
-				uNetLength = htonl(uNetLength);
-				bufferevent_write(pConn->pEv, &uNetLength, DEF_NETPROTOCOL_HEADER_LENGTH);
-				bufferevent_write(pConn->pEv, m_xEventBuffer.GetReadableBufferPtr(), action.uTag);
+				if (pConn->eConnState == kSServerConnState_Connected)
+				{
+					unsigned int uNetLength = DEF_NETPROTOCOL_HEADER_LENGTH + action.uTag;
+					uNetLength = htonl(uNetLength);
+					bufferevent_write(pConn->pEv, &uNetLength, DEF_NETPROTOCOL_HEADER_LENGTH);
+					bufferevent_write(pConn->pEv, m_xEventBuffer.GetReadableBufferPtr(), action.uTag);
+				}
 			}
 			m_xEventBuffer.Read(NULL, action.uTag);
 		} else if (kSServerAction_CloseUserConn == action.uAction) {
@@ -467,24 +530,26 @@ void SServerEngine::processConnEvent()
 			if (NULL == pConn) {
 				LOGERROR("Failed to close conn, index:%d", action.uIndex);
 			} else {
-				//onUserConnectionClosed(pConn);
+				onUserConnectionClosed(pConn);
 				//	User close the connection, just close socket
-				if (INVALID_SOCKET != pConn->fd) {
+				/*if (INVALID_SOCKET != pConn->fd) {
 					evutil_closesocket(pConn->fd);
 					pConn->fd = INVALID_SOCKET;
-				}
+					LOGDEBUG("Close fd of user con %d", pConn->uConnIndex);
+				}*/
 			}
 		} else if (kSServerAction_CloseServerConn == action.uAction) {
 			SServerConn* pConn = GetServerConn((unsigned int)action.uIndex);
 			if (NULL == pConn) {
 				LOGERROR("Failed to close conn, index:%d", action.uIndex);
 			} else {
-				//	onServerConnectionClosed(pConn);
+				onServerConnectionClosed(pConn);
 				//	just close the socket , after recv return error, the bufferevent will be deleted
-				if (INVALID_SOCKET != pConn->fd) {
+				/*if (INVALID_SOCKET != pConn->fd) {
 					evutil_closesocket(pConn->fd);
 					pConn->fd = INVALID_SOCKET;
-				}
+					LOGDEBUG("Close fd of server con %d", pConn->uConnIndex);
+				}*/
 			}
 		} else if (kSServerAction_Connect == action.uAction) {
 			SServerActionConnectContext ctx;
@@ -518,7 +583,7 @@ void SServerEngine::processConnectAction(SServerActionConnectContext* _pAction)
 		return;
 	}
 
-	bufferevent* pBev = bufferevent_socket_new(m_pEventBase, -1, BEV_OPT_CLOSE_ON_FREE);
+	bufferevent* pBev = bufferevent_socket_new(m_pEventBase, -1, SSERVERCONN_FLAG);
 	if ( NULL == pBev ) {
 		LOGERROR("Can't create bufferevent, addr %d port %d", _pAction->addr.sin_addr.s_addr, _pAction->addr.sin_port );
 		_pAction->fnFailed(uConnIndex, _pAction->pArg);
@@ -545,15 +610,6 @@ void SServerEngine::processConnectAction(SServerActionConnectContext* _pAction)
 	pConn->bServerConn = true;
 	pConn->m_fnOnConnectSuccess = _pAction->fnSuccess;
 	pConn->m_fnOnConnectFailed = _pAction->fnFailed;
-
-	/*if(pConn->uConnIndex == IndexManager::s_uInvalidIndex)
-	{
-		LOGPRINT("Reach max fd.");
-		evutil_closesocket(nFd);
-		bufferevent_free(pBev);
-		pBev = NULL;
-		return -1;
-	}*/
 
 	bufferevent_setcb(pBev,
 		&SServerEngine::__onConnRead,
@@ -612,6 +668,25 @@ int SServerEngine::RemoveTimerJob(unsigned int _nJobId)
 	return 0;
 }
 
+int SServerEngine::ClearTimerJob()
+{
+	SServerAutoLocker locker(&m_xTimerMutex);
+
+	SServerTimerJobList::iterator iterB = m_xTimerJobs.begin();
+	for(iterB;
+		iterB != m_xTimerJobs.end();
+		++iterB
+		)
+	{
+		SServerTimerJob* pJob = *iterB;
+		delete pJob;
+	}
+
+	m_xTimerJobs.clear();
+
+	return 0;
+}
+
 void SServerEngine::processTimerJob()
 {
 	SServerAutoLocker locker(&m_xTimerMutex);
@@ -641,6 +716,7 @@ void SServerEngine::processTimerJob()
 void* SServerEngine::__threadEntry(void* _pArg)
 {
 	SServerEngine* pIns = (SServerEngine*)_pArg;
+	pIns->m_nWorkingTid = (int)GetCurrentThreadId();
 
 	//	initialize
 	//evthread_use_windows_threads();
@@ -698,7 +774,7 @@ void* SServerEngine::__threadEntry(void* _pArg)
 	}
 
 	//	timer event
-	struct timeval tv = { 0, 50 * 1000 };
+	struct timeval tv = { 0, 5 * 1000 };
 	pIns->m_pTimerEvent = event_new(pIns->m_pEventBase, -1, EV_PERSIST, &SServerEngine::__onEventTimer, pIns);
 	if ( NULL == pIns->m_pTimerEvent ) {
 		LOGERROR("Create lib event timer failed!");
@@ -709,10 +785,52 @@ void* SServerEngine::__threadEntry(void* _pArg)
 	LOGPRINT("Thread working, Id %d", GetCurrentThreadId());
 
 	//	event loop
-	event_base_dispatch(pIns->m_pEventBase);
+	pIns->m_eStatus = kSServerStatus_Running;
+	int nResult = event_base_dispatch(pIns->m_pEventBase);
+	pIns->m_eStatus = kSServerStatus_Stop;
+	LOGINFO("event loop quit with code %d", nResult);
+
+	// do clear up works
+	// close listener
+	LOGDEBUG("free listener");
+	evconnlistener_free(pIns->m_pConnListener);
+	pIns->m_pConnListener = NULL;
+	// we should close all connections
+	LOGDEBUG("free connections");
+	for (int i = 0; i < (int)pIns->m_uMaxConnUser; ++i)
+	{
+		SServerConn* pConn = pIns->m_pUserConnArray[i];
+		if (NULL != pConn)
+		{
+			pIns->onUserConnectionClosed(pConn);
+		}
+	}
+	for (int i = 0; i < (int)pIns->m_uMaxConnServer; ++i)
+	{
+		SServerConn* pConn = pIns->m_pServerConnArray[i];
+		if (NULL != pConn)
+		{
+			pIns->onServerConnectionClosed(pConn);
+		}
+	}
+	// close local sockets
+	LOGDEBUG("free socket pair");
+	bufferevent_free(pIns->m_pBvEvent);
+	pIns->m_pBvEvent = NULL;
+	evutil_closesocket(pIns->m_arraySocketPair[1]);
+	for (int i = 0; i < sizeof(pIns->m_arraySocketPair) / sizeof(pIns->m_arraySocketPair[0]); ++i)
+	{
+		pIns->m_arraySocketPair[i] = INVALID_SOCKET;
+	}
+	// free all timer job
+	LOGDEBUG("free timer");
+	evtimer_del(pIns->m_pTimerEvent);
+	pIns->m_pTimerEvent = NULL;
+	pIns->ClearTimerJob();
+	// free the event base
+	LOGDEBUG("free event base");
 	event_base_free(pIns->m_pEventBase);
 	pIns->m_pEventBase = NULL;
-	pIns->m_pTimerEvent = NULL;
 
 	return NULL;
 }
@@ -738,8 +856,7 @@ void SServerEngine::__onAcceptConn(struct evconnlistener *pEvListener, evutil_so
 	//	register event
 	bufferevent* pEv = bufferevent_socket_new(pEventBase,
 		sock,
-		BEV_OPT_CLOSE_ON_FREE
-		//| BEV_OPT_THREADSAFE
+		SSERVERCONN_FLAG
 		);
 	if (NULL == pEv) {
 		LOGPRINT("Failed to bind bufferevent");
@@ -828,6 +945,7 @@ void SServerEngine::__onConnEvent(struct bufferevent* pEv, short what, void* pCt
 		LOGPRINT("Conn %d error:%d", pConn->uConnIndex, what);
 	}
 
+	// on connecting as client role
 	if (pConn->bServerConn &&
 		pConn->eConnState == kSServerConnState_Connecting) {
 		pConn->Callback_OnConnectFailed();
