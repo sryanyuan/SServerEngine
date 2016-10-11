@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
 #endif
 	printThreadId();
 
-	SServerInitDesc desc = {0};
+	SServerInitDesc desc;
 	desc.uMaxConnUser = 5;
 	desc.bUseIOCP = false;
 	desc.pFuncOnAcceptUser = onAcceptUser;
@@ -172,11 +172,6 @@ int main(int argc, char* argv[])
 	for(;;)
 	{
 		Sleep(10);
-
-		if (eng.GetServerStatus() == kSServerStatus_Stop)
-		{
-			break;
-		}
 	}
 
 	return 0;

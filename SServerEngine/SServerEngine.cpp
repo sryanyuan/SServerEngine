@@ -48,8 +48,6 @@ SServerEngine::SServerEngine()
 	m_uPort = 0;
 	memset(&m_stThreadId, 0, sizeof(m_stThreadId));
 	memset(m_arraySocketPair, 0, sizeof(m_arraySocketPair));
-	m_uMaxConnUser = DEF_DEFAULT_MAX_CONN;
-	m_uMaxConnServer = DEF_DEFAULT_MAX_CONN;
 	m_pUserConnArray = NULL;
 	pthread_mutex_init(&m_xSendMutex, NULL);
 	pthread_mutex_init(&m_xTimerMutex, NULL);
@@ -65,8 +63,13 @@ SServerEngine::SServerEngine()
 
 	m_nConnectedServerCount = m_nConnectedUserCount = 0;
 
-	m_bUseIOCP = false;
 	m_pTimerEvent = NULL;
+
+	// options
+	m_bUseIOCP = false;
+	m_uMaxConnUser = DEF_DEFAULT_MAX_CONN;
+	m_uMaxConnServer = DEF_DEFAULT_MAX_CONN;
+	m_uMaxPacketLength = DEF_DEFAULT_MAX_PACKET_LENGTH;
 }
 
 SServerEngine::~SServerEngine()
@@ -111,6 +114,9 @@ int SServerEngine::Init(const SServerInitDesc* _pDesc)
 
 	//	use iocp
 	m_bUseIOCP = _pDesc->bUseIOCP;
+
+	// limit max packet length
+	m_uMaxPacketLength = (size_t)_pDesc->uMaxPacketLength;
 
 	return kSServerResult_Ok;
 }

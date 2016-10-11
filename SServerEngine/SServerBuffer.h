@@ -83,6 +83,11 @@ public:
 		return _uLen;
 	}
 
+	void IncDataLength(size_t _nDiff)
+	{
+		m_uDataLength += _nDiff;
+	}
+
 	size_t GetBufferSize()
 	{
 		return m_uBufferLen;

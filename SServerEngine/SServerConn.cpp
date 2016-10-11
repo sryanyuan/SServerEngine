@@ -33,7 +33,7 @@ void SServerConn::readHead()
 	if(uLen < DEF_NETPROTOCOL_HEADER_LENGTH)
 	{
 		LOGERROR("Head length invalid %d", uLen);
-		pEng->CloseUserConnection(uConnIndex);
+		pEng->onConnectionClosed(this);
 		return;
 	}
 
@@ -46,7 +46,17 @@ void SServerConn::readHead()
 	if(m_uPacketHeadLength <= DEF_NETPROTOCOL_HEADER_LENGTH)
 	{
 		LOGERROR("Head length content invalid %d", m_uPacketHeadLength);
-		pEng->CloseUserConnection(uConnIndex);
+		pEng->onConnectionClosed(this);
+		return;
+	}
+
+	// check the packet length limit
+	size_t uMaxPacketLength = pEng->GetMaxPacketLength();
+	if (0 != uMaxPacketLength &&
+		m_uPacketHeadLength > uMaxPacketLength)
+	{
+		LOGERROR("Packet length of conn %d out of limit, conn %d");
+		pEng->onConnectionClosed(this);
 		return;
 	}
 
@@ -68,7 +78,7 @@ void SServerConn::readBody()
 	if(m_uPacketHeadLength <= DEF_NETPROTOCOL_HEADER_LENGTH)
 	{
 		LOGERROR("Invalid body length %d", m_uPacketHeadLength);
-		pEng->CloseUserConnection(uConnIndex);
+		pEng->onConnectionClosed(this);
 		return;
 	}
 
@@ -77,8 +87,10 @@ void SServerConn::readBody()
 	evbuffer* pInput = bufferevent_get_input(pEv);
 	size_t uLen = evbuffer_get_length(pInput);
 
+	// not receive full packet
 	if(uLen < uBodyLength)
 	{
+		// not receive full body , continue recv ...
 		LOGERROR("Invalid read body length %d", uLen);
 		pEng->CloseUserConnection(uConnIndex);
 		return;

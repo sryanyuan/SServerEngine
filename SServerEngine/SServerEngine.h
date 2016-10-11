@@ -61,8 +61,13 @@ struct SServerActionConnectContext
 
 struct SServerInitDesc
 { 
+	// limit the count of connection as server
 	size_t uMaxConnUser;
+	// limit the count of connection as client
 	size_t uMaxConnServer;
+	// limit the max packet length
+	size_t uMaxPacketLength;
+	// using iocp event mode
 	bool bUseIOCP;
 
 	//	callbacks
@@ -73,6 +78,16 @@ struct SServerInitDesc
 	FUNC_ONACCEPT pFuncOnAcceptServer;
 	FUNC_ONDISCONNECTED pFuncOnDisconnctedServer;
 	FUNC_ONRECV pFuncOnRecvServer;
+
+	// default constructor
+	SServerInitDesc()
+	{
+		memset(this, 0, sizeof(SServerInitDesc));
+		uMaxConnServer = DEF_DEFAULT_MAX_CONN;
+		uMaxConnUser = DEF_DEFAULT_MAX_CONN;
+		uMaxPacketLength = DEF_DEFAULT_MAX_PACKET_LENGTH;
+		bUseIOCP = false;
+	}
 };
 
 struct SServerAutoLocker
@@ -100,6 +115,8 @@ typedef std::list<SServerTimerJob*> SServerTimerJobList;
 //////////////////////////////////////////////////////////////////////////
 class SServerEngine
 {
+	friend class SServerConn;
+
 public:
 	SServerEngine();
 	~SServerEngine();
@@ -128,6 +145,7 @@ public:
 	inline SServerStatus GetServerStatus()						{return m_eStatus;}
 	inline unsigned int GetMaxConnUser()						{return m_uMaxConnUser;}
 	inline void SetMaxConnUser(unsigned int _uConn)				{m_uMaxConnUser = _uConn;}
+	inline size_t GetMaxPacketLength()							{return m_uMaxPacketLength;}
 
 	inline int GetConnectedServerCount()					{return m_nConnectedServerCount;}
 	inline int GetConnectedUserCount()						{return m_nConnectedUserCount;}
@@ -175,12 +193,15 @@ protected:
 	pthread_t m_stThreadId;
 	event_base* m_pEventBase;
 	evconnlistener* m_pConnListener;
-	bool m_bUseIOCP;
 
 	std::string m_xAddr;
 	unsigned short m_uPort;
+
+	// options
 	size_t m_uMaxConnUser;
 	size_t m_uMaxConnServer;
+	bool m_bUseIOCP;
+	size_t m_uMaxPacketLength;
 
 	IndexManager m_xUserIndexMgr;
 	IndexManager m_xServerIndexMgr;
