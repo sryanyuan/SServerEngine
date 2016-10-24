@@ -126,7 +126,7 @@ BOOL __stdcall NetbaseWrapper::GetUserAddress(DWORD dwConnectionIndex,char* pIP,
 
 BOOL __stdcall NetbaseWrapper::SendToServer(DWORD dwConnectionIndex,char* msg,DWORD length,DWORD flag)
 {
-	if(0 == SendPacketToServer(dwConnectionIndex, msg, length))
+	if(0 == SyncSendPacketToServer(dwConnectionIndex, msg, length))
 	{
 		return TRUE;
 	}
@@ -135,7 +135,7 @@ BOOL __stdcall NetbaseWrapper::SendToServer(DWORD dwConnectionIndex,char* msg,DW
 
 BOOL __stdcall NetbaseWrapper::SendToUser(DWORD dwConnectionIndex,char* msg,DWORD length,DWORD flag)
 {
-	if(0 == SendPacketToUser(dwConnectionIndex, msg, length))
+	if(0 == SyncSendPacketToUser(dwConnectionIndex, msg, length))
 	{
 		return TRUE;
 	}
@@ -209,7 +209,7 @@ BOOL __stdcall NetbaseWrapper::ConnectToServerWithUserSide(char* szIP,WORD port,
 
 BOOL __stdcall NetbaseWrapper::ConnectToServerWithServerSide(char* szIP,WORD port,CONNECTSUCCESSFUNC fnSuccess,CONNECTFAILFUNC fnFailed,void* pExt)
 {
-	if(0 == Connect(szIP, (unsigned short)port, FUNC_ONCONNECTSUCCESS(fnSuccess), FUNC_ONCONNECTFAILED(fnFailed), pExt))
+	if(0 == SyncConnect(szIP, (unsigned short)port, FUNC_ONCONNECTSUCCESS(fnSuccess), FUNC_ONCONNECTFAILED(fnFailed), pExt))
 	{
 		return TRUE;
 	}

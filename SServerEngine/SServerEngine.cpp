@@ -94,7 +94,9 @@ int SServerEngine::Init(const SServerInitDesc* _pDesc)
 		m_uMaxConnServer = DEF_DEFAULT_MAX_CONN;
 	}
 
+	LOGINFO("Create with %d,%d", m_uMaxConnUser, m_uMaxConnServer);
 	m_pUserConnArray = new SServerConn*[m_uMaxConnUser + 1];
+	LOGINFO("Create with %d,%d done", m_uMaxConnUser, m_uMaxConnServer);
 	memset(m_pUserConnArray, 0, sizeof(SServerConn*) * (m_uMaxConnUser + 1));
 	m_pServerConnArray = new SServerConn*[m_uMaxConnServer + 1];
 	memset(m_pServerConnArray, 0, sizeof(SServerConn*) * (m_uMaxConnServer + 1));
