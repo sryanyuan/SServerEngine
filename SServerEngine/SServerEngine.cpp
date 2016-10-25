@@ -94,9 +94,7 @@ int SServerEngine::Init(const SServerInitDesc* _pDesc)
 		m_uMaxConnServer = DEF_DEFAULT_MAX_CONN;
 	}
 
-	LOGINFO("Create with %d,%d", m_uMaxConnUser, m_uMaxConnServer);
 	m_pUserConnArray = new SServerConn*[m_uMaxConnUser + 1];
-	LOGINFO("Create with %d,%d done", m_uMaxConnUser, m_uMaxConnServer);
 	memset(m_pUserConnArray, 0, sizeof(SServerConn*) * (m_uMaxConnUser + 1));
 	m_pServerConnArray = new SServerConn*[m_uMaxConnServer + 1];
 	memset(m_pServerConnArray, 0, sizeof(SServerConn*) * (m_uMaxConnServer + 1));
@@ -144,9 +142,8 @@ int SServerEngine::Stop()
 		return 1;
 	}
 
-#ifdef _DEBUG
 	int nTid = (int)GetCurrentThreadId();
-
+#ifdef _DEBUG
 	if (nTid != m_nWorkingTid)
 	{
 		assert("Tid conflict");
@@ -939,9 +936,9 @@ void SServerEngine::__onConnEvent(struct bufferevent* pEv, short what, void* pCt
 	if (what & BEV_EVENT_CONNECTED) {
 		if (pConn->bServerConn &&
 			pConn->eConnState == kSServerConnState_Connecting) {
-			pConn->Callback_OnConnectSuccess();
 			pConn->eConnState = kSServerConnState_Connected;
 			pEng->Callback_OnAcceptServer(pConn->uConnIndex);
+			pConn->Callback_OnConnectSuccess();
 			++pEng->m_nConnectedServerCount;
 		}
 		return;

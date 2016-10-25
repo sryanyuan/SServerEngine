@@ -7,7 +7,7 @@ NetbaseWrapper::NetbaseWrapper()
 
 NetbaseWrapper::~NetbaseWrapper()
 {
-
+	Stop();
 }
 
 BOOL __stdcall NetbaseWrapper::CreateNetwork(DESC_NETWORK* desc,DWORD dwUserAcceptInterval,DWORD dwServerAcceptInterval)
@@ -16,7 +16,7 @@ BOOL __stdcall NetbaseWrapper::CreateNetwork(DESC_NETWORK* desc,DWORD dwUserAcce
 	m_stDesc.pFuncOnAcceptUser = (FUNC_ONACCEPT)desc->OnAcceptUser;
 	m_stDesc.pFuncOnDisconnctedUser = (FUNC_ONDISCONNECTED)desc->OnDisconnectUser;
 	m_stDesc.pFuncOnRecvUser = (FUNC_ONRECV)desc->OnRecvFromUserTCP;
-	m_stDesc.pFuncOnAcceptServer = (FUNC_ONACCEPT)desc->OnAcceptUser;
+	m_stDesc.pFuncOnAcceptServer = (FUNC_ONACCEPT)desc->OnAcceptServer;
 	m_stDesc.pFuncOnDisconnctedServer = (FUNC_ONDISCONNECTED)desc->OnDisconnectServer;
 	m_stDesc.pFuncOnRecvServer = (FUNC_ONRECV)desc->OnRecvFromServerTCP;
 	m_stDesc.uMaxConnUser = desc->dwMaxUserNum;
@@ -267,4 +267,17 @@ BOOL __stdcall NetbaseWrapper::SendToServer(DWORD dwConnectionIndex,PACKET_LIST*
 BOOL __stdcall NetbaseWrapper::SendToUser(DWORD dwConnectionIndex,PACKET_LIST* pList,DWORD flag)
 {
 	return FALSE;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+// new
+CNetbase* CreateNetbaseWrapper()
+{
+	return new NetbaseWrapper;
+}
+
+void DestroyNetbaseWrapper(CNetbase* pNet)
+{
+	delete pNet;
 }

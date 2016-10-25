@@ -11,3 +11,4 @@ Release/
 StaticDebug/
 StaticRelease/
 SServerEngine.opensdf
+*.user

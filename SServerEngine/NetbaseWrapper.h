@@ -56,5 +56,8 @@ public:
 protected:
 	SServerInitDesc m_stDesc;
 };
+
+CNetbase* CreateNetbaseWrapper();
+void DestroyNetbaseWrapper(CNetbase* pNet);
 //////////////////////////////////////////////////////////////////////////
 #endif
