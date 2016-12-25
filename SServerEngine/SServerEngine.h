@@ -107,8 +107,8 @@ struct SServerAutoLocker
 struct SServerTimerJob
 {
 	unsigned int nJobId;
-	int nLastTriggerTime;
-	int nTriggerIntervalMS;
+	unsigned int nLastTriggerTime;
+	unsigned int nTriggerIntervalMS;
 	FUNC_ONTIMER fnOnTimer;
 };
 typedef std::list<SServerTimerJob*> SServerTimerJobList;

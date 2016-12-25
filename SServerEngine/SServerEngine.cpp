@@ -31,6 +31,16 @@
 #pragma comment(lib, LIBPATH_LIBEVENT"libevent_core_vc9.lib")
 #pragma comment(lib, LIBPATH_LIBEVENT"libevent_extras_vc9.lib")
 #endif
+#elif _MSC_VER == 1800
+#ifdef _DEBUG
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_vc12_d.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_core_vc12_d.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_extras_vc12_d.lib")
+#else
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_vc12.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_core_vc12.lib")
+#pragma comment(lib, LIBPATH_LIBEVENT"libevent_extras_vc12.lib")
+#endif
 #else
 #error VS version not support
 #endif
@@ -695,7 +705,7 @@ int SServerEngine::ClearTimerJob()
 void SServerEngine::processTimerJob()
 {
 	SServerAutoLocker locker(&m_xTimerMutex);
-	int nNowTick = int(GetTickCount());
+	unsigned int nNowTick = GetTickCount();
 
 	SServerTimerJobList::const_iterator iterB = m_xTimerJobs.begin();
 	for(iterB;
