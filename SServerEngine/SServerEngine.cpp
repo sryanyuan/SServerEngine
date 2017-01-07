@@ -5,11 +5,9 @@
 //////////////////////////////////////////////////////////////////////////
 #ifdef WIN32
 
-#define LIBPATH_PTHREAD "lib/pthread/"
 #define LIBPATH_LIBEVENT "lib/libevent/"
 
 #pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, LIBPATH_PTHREAD"pthreadVC2.lib")
 
 #if _MSC_VER == 1700
 #ifdef _DEBUG
@@ -59,8 +57,8 @@ SServerEngine::SServerEngine()
 	memset(&m_stThreadId, 0, sizeof(m_stThreadId));
 	memset(m_arraySocketPair, 0, sizeof(m_arraySocketPair));
 	m_pUserConnArray = NULL;
-	pthread_mutex_init(&m_xSendMutex, NULL);
-	pthread_mutex_init(&m_xTimerMutex, NULL);
+	InitializeCriticalSection(&m_xSendMutex);
+	InitializeCriticalSection(&m_xTimerMutex);
 	m_xEventBuffer.AllocBuffer(DEF_DEFAULT_ENGINE_WRITEBUFFERSIZE);
 
 	m_pFuncOnAcceptUser = NULL;
@@ -88,8 +86,8 @@ SServerEngine::~SServerEngine()
 		delete[] m_pUserConnArray;
 		m_pUserConnArray = NULL;
 	}
-	pthread_mutex_destroy(&m_xSendMutex);
-	pthread_mutex_destroy(&m_xTimerMutex);
+	DeleteCriticalSection(&m_xSendMutex);
+	DeleteCriticalSection(&m_xTimerMutex);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -137,8 +135,8 @@ int SServerEngine::Start(const char* _pszAddr, unsigned short _uPort)
 	m_xAddr = _pszAddr;
 
 	//	create worker thread
-	int nRet = pthread_create(&m_stThreadId, NULL, &SServerEngine::__threadEntry, this);
-	if (0 != nRet) {
+	int nRet = _beginthreadex(NULL, 0, &SServerEngine::__threadEntry, this, 0, NULL);
+	if (0 == nRet) {
 		return kSServerResult_CreateThreadFailed;
 	}
 
@@ -371,12 +369,12 @@ void SServerEngine::SetServerConn(unsigned int _uConnIndex, SServerConn* conn)
 
 void SServerEngine::LockSendBuffer()
 {
-	pthread_mutex_lock(&m_xSendMutex);
+	EnterCriticalSection(&m_xSendMutex);
 }
 
 void SServerEngine::UnlockSendBuffer()
 {
-	pthread_mutex_unlock(&m_xSendMutex);
+	LeaveCriticalSection(&m_xSendMutex);
 }
 
 int SServerEngine::CloseServerConnection(unsigned int _uConnIndex)
@@ -728,7 +726,7 @@ void SServerEngine::processTimerJob()
 
 //////////////////////////////////////////////////////////////////////////
 //	static handlers
-void* SServerEngine::__threadEntry(void* _pArg)
+unsigned int __stdcall SServerEngine::__threadEntry(void* _pArg)
 {
 	SServerEngine* pIns = (SServerEngine*)_pArg;
 	pIns->m_nWorkingTid = (int)GetCurrentThreadId();
@@ -748,13 +746,13 @@ void* SServerEngine::__threadEntry(void* _pArg)
 
 	if (NULL == pIns->m_pEventBase) {
 		LOGERROR("Create event_base failed");
-		return (void*)-1;
+		return -1;
 	}
 
 	//	create socket pair
 	if (evutil_socketpair(AF_UNIX, SOCK_STREAM, 0, pIns->m_arraySocketPair)) {
 		LOGERROR("evutil_socketpair fail");
-		return (void*)-1;
+		return -1;
 	}
 
 	evutil_make_socket_nonblocking(pIns->m_arraySocketPair[0]);
@@ -762,7 +760,7 @@ void* SServerEngine::__threadEntry(void* _pArg)
 	pIns->m_pBvEvent = bufferevent_socket_new(pIns->m_pEventBase, pIns->m_arraySocketPair[0], 0);
 	if (NULL == pIns->m_pBvEvent) {
 		LOGERROR("Create bufferevent failed");
-		return (void*)-1;
+		return -1;
 	}
 
 	// set callback
@@ -847,7 +845,7 @@ void* SServerEngine::__threadEntry(void* _pArg)
 	event_base_free(pIns->m_pEventBase);
 	pIns->m_pEventBase = NULL;
 
-	return NULL;
+	return 0;
 }
 
 void SServerEngine::__onAcceptConn(struct evconnlistener *pEvListener, evutil_socket_t sock, struct sockaddr *pAddr, int iLen, void *ptr)

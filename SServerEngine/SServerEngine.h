@@ -5,7 +5,7 @@
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
-#include <pthread/pthread.h>
+#include <process.h>
 #include <string>
 #include <list>
 #include <WinSock2.h>
@@ -92,16 +92,16 @@ struct SServerInitDesc
 
 struct SServerAutoLocker
 {
-	SServerAutoLocker(pthread_mutex_t* _pm)
+	SServerAutoLocker(CRITICAL_SECTION* _cs)
 	{
-		pMtx = _pm;
-		pthread_mutex_lock(pMtx);
+		pCs = _cs;
+		EnterCriticalSection(pCs);
 	}
 	~SServerAutoLocker()
 	{
-		pthread_mutex_unlock(pMtx);
+		LeaveCriticalSection(pCs);
 	}
-	pthread_mutex_t* pMtx;
+	CRITICAL_SECTION* pCs;
 };
 
 struct SServerTimerJob
@@ -177,7 +177,7 @@ protected:
 	void processTimerJob();
 
 public:
-	static void* PTW32_CDECL __threadEntry(void*);
+	static unsigned int __stdcall __threadEntry(void*);
 	static void __onAcceptConn(struct evconnlistener *pEvListener, evutil_socket_t sock, struct sockaddr *pAddr, int iLen, void *ptr);
 	static void __onAcceptErr(struct evconnlistener *pEvListener, void *ptr);
 	static void __onConnErr();
@@ -190,7 +190,7 @@ public:
 	static void __onEventTimer(evutil_socket_t, short _nEvents, void * _pCxt);
 
 protected:
-	pthread_t m_stThreadId;
+	uintptr_t m_stThreadId;
 	event_base* m_pEventBase;
 	evconnlistener* m_pConnListener;
 
@@ -211,7 +211,7 @@ protected:
 	evutil_socket_t m_arraySocketPair[2];
 	bufferevent* m_pBvEvent;
 
-	pthread_mutex_t m_xSendMutex;
+	CRITICAL_SECTION m_xSendMutex;
 	SServerBuffer m_xEventBuffer;
 
 	//	callbacks
@@ -228,7 +228,7 @@ protected:
 
 	//	timer list
 	event* m_pTimerEvent;
-	pthread_mutex_t m_xTimerMutex;
+	CRITICAL_SECTION m_xTimerMutex;
 	SServerTimerJobList m_xTimerJobs;
 
 	// status
